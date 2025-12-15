@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar } from 'lucide-react';
+import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar, LogIn, LogOut, Loader2 } from 'lucide-react';
 import { useFinance } from './hooks/useFinance';
 import { Dashboard } from './components/Dashboard';
 import { Goals } from './components/Goals';
 import { Subscriptions } from './components/Subscriptions';
 import { TransactionForm } from './components/TransactionForm';
+import { Auth } from './components/Auth';
+import { supabase } from './lib/supabase';
 
 const NavSwitch = ({ activeTab, setActiveTab }) => {
   const tabs = [
@@ -43,6 +45,8 @@ const NavSwitch = ({ activeTab, setActiveTab }) => {
 
 function App() {
   const { 
+    user,
+    loading,
     transactions, 
     goals,
     subscriptions,
@@ -58,6 +62,7 @@ function App() {
 
   const [activeTab, setActiveTab] = useState('transactions');
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -76,7 +81,38 @@ function App() {
     }
   }, [isDarkMode]);
 
+  // Close auth modal when user logs in
+  useEffect(() => {
+    if (user) setShowAuth(false);
+  }, [user]);
+
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  const handleLogout = async () => {
+    if (supabase) await supabase.auth.signOut();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-neutral-950">
+        <Loader2 className="animate-spin text-indigo-600" size={40} />
+      </div>
+    );
+  }
+
+  if (showAuth && !user) {
+    return (
+      <div className="relative">
+        <button 
+          onClick={() => setShowAuth(false)}
+          className="absolute top-4 right-4 p-2 bg-white dark:bg-neutral-800 rounded-full shadow-md z-50"
+        >
+          <X size={24} className="text-slate-500 dark:text-neutral-400" />
+        </button>
+        <Auth />
+      </div>
+    );
+  }
 
   const renderContent = () => {
     let content;
@@ -143,6 +179,14 @@ function App() {
                 aria-label="Toggle Dark Mode"
               >
                 {isDarkMode ? <Sun size={18} className="md:w-5 md:h-5" /> : <Moon size={18} className="md:w-5 md:h-5" />}
+              </button>
+
+              <button
+                onClick={() => user ? handleLogout() : setShowAuth(true)}
+                className="p-2 md:p-2.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
+                title={user ? "Cerrar Sesión" : "Iniciar Sesión"}
+              >
+                {user ? <LogOut size={18} className="md:w-5 md:h-5" /> : <LogIn size={18} className="md:w-5 md:h-5" />}
               </button>
 
               <button
