@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 // VITE_SUPABASE_ANON_KEY=tu_clave_anonima
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_TOKEN;
 
 export const supabase = supabaseUrl && supabaseAnonKey 
   ? createClient(supabaseUrl, supabaseAnonKey) 
