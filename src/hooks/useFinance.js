@@ -4,13 +4,17 @@ const STORAGE_KEY = 'finance_app_data';
 
 const initialData = {
   transactions: [],
-  goals: []
+  goals: [],
+  subscriptions: []
 };
 
 export function useFinance() {
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : initialData;
+    // Migration for existing data without subscriptions
+    const parsed = saved ? JSON.parse(saved) : initialData;
+    if (!parsed.subscriptions) parsed.subscriptions = [];
+    return parsed;
   });
 
   useEffect(() => {
@@ -67,6 +71,26 @@ export function useFinance() {
     }));
   };
 
+  const addSubscription = (subscription) => {
+    const newSubscription = {
+      ...subscription,
+      id: crypto.randomUUID(),
+      amount: parseFloat(subscription.amount),
+      dueDay: parseInt(subscription.dueDay)
+    };
+    setData(prev => ({
+      ...prev,
+      subscriptions: [...prev.subscriptions, newSubscription]
+    }));
+  };
+
+  const deleteSubscription = (id) => {
+    setData(prev => ({
+      ...prev,
+      subscriptions: prev.subscriptions.filter(s => s.id !== id)
+    }));
+  };
+
   const getBalance = () => {
     return data.transactions.reduce((acc, curr) => {
       return curr.type === 'income' 
@@ -90,11 +114,14 @@ export function useFinance() {
   return {
     transactions: data.transactions,
     goals: data.goals,
+    subscriptions: data.subscriptions,
     addTransaction,
     deleteTransaction,
     addGoal,
     updateGoal,
     deleteGoal,
+    addSubscription,
+    deleteSubscription,
     stats: {
       balance: getBalance(),
       income: getIncome(),
