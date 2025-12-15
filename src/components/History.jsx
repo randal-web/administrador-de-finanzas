@@ -2,7 +2,7 @@ import { Trash2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 export function History({ transactions, onDelete }) {
   return (
-    <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-50 dark:border-neutral-800 h-full flex flex-col">
+    <div className="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-50 dark:border-neutral-800 h-full flex flex-col">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Historial Reciente</h2>
         <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium mt-1">Últimos movimientos registrados</p>
