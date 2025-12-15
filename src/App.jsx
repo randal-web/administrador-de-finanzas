@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar, LogIn, LogOut, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar, LogIn, LogOut, Loader2, Bell } from 'lucide-react';
 import { useFinance } from './hooks/useFinance';
 import { Dashboard } from './components/Dashboard';
 import { Goals } from './components/Goals';
 import { Subscriptions } from './components/Subscriptions';
 import { TransactionForm } from './components/TransactionForm';
 import { Auth } from './components/Auth';
+import { Notifications } from './components/Notifications';
 import { supabase } from './lib/supabase';
+import { getDaysRemaining } from './lib/utils';
 
 const NavSwitch = ({ activeTab, setActiveTab }) => {
   const tabs = [
@@ -62,7 +64,7 @@ function App() {
 
   const [activeTab, setActiveTab] = useState('transactions');
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -70,6 +72,9 @@ function App() {
     }
     return false;
   });
+
+  // Calculate notification count
+  const notificationCount = subscriptions.filter(sub => getDaysRemaining(sub.dueDay) <= 5).length;
 
   useEffect(() => {
     if (isDarkMode) {
@@ -80,11 +85,6 @@ function App() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
-
-  // Close auth modal when user logs in
-  useEffect(() => {
-    if (user) setShowAuth(false);
-  }, [user]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
@@ -100,15 +100,18 @@ function App() {
     );
   }
 
-  if (showAuth && !user) {
+  if (!user) {
     return (
-      <div className="relative">
-        <button 
-          onClick={() => setShowAuth(false)}
-          className="absolute top-4 right-4 p-2 bg-white dark:bg-neutral-800 rounded-full shadow-md z-50"
-        >
-          <X size={24} className="text-slate-500 dark:text-neutral-400" />
-        </button>
+      <div className="relative min-h-screen bg-[#F8FAFC] dark:bg-neutral-950 transition-colors duration-300">
+        <div className="absolute top-4 right-4 z-50">
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-full bg-white dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors shadow-sm border border-slate-200 dark:border-neutral-700"
+            aria-label="Toggle Dark Mode"
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+        </div>
         <Auth />
       </div>
     );
@@ -173,6 +176,25 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 md:p-2.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors relative"
+                  aria-label="Notifications"
+                >
+                  <Bell size={18} className="md:w-5 md:h-5" />
+                  {notificationCount > 0 && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-neutral-900 animate-pulse" />
+                  )}
+                </button>
+                {showNotifications && (
+                  <Notifications 
+                    subscriptions={subscriptions} 
+                    onClose={() => setShowNotifications(false)} 
+                  />
+                )}
+              </div>
+
               <button
                 onClick={toggleTheme}
                 className="p-2 md:p-2.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
@@ -182,11 +204,11 @@ function App() {
               </button>
 
               <button
-                onClick={() => user ? handleLogout() : setShowAuth(true)}
+                onClick={handleLogout}
                 className="p-2 md:p-2.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
-                title={user ? "Cerrar Sesión" : "Iniciar Sesión"}
+                title="Cerrar Sesión"
               >
-                {user ? <LogOut size={18} className="md:w-5 md:h-5" /> : <LogIn size={18} className="md:w-5 md:h-5" />}
+                <LogOut size={18} className="md:w-5 md:h-5" />
               </button>
 
               <button
