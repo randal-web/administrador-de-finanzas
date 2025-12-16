@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const STORAGE_KEY = 'finance_app_data';
@@ -13,6 +13,7 @@ const initialData = {
 export function useFinance() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const dataLoadedRef = useRef(false);
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : initialData;
@@ -44,6 +45,7 @@ export function useFinance() {
         localStorage.removeItem('session_expiry');
         setUser(null);
         setLoading(false);
+        dataLoadedRef.current = false;
         return;
       }
 
@@ -63,6 +65,7 @@ export function useFinance() {
         localStorage.removeItem('session_expiry');
         setUser(null);
         setLoading(false);
+        dataLoadedRef.current = false;
         return;
       }
 
@@ -77,6 +80,7 @@ export function useFinance() {
         if (!parsed.debts) parsed.debts = [];
         setData(parsed);
         setLoading(false);
+        dataLoadedRef.current = false;
       }
     });
 
@@ -92,7 +96,7 @@ export function useFinance() {
 
   const fetchData = async (userId) => {
     try {
-      setLoading(true);
+      if (!dataLoadedRef.current) setLoading(true);
       const [ { data: transactions }, { data: goals }, { data: subscriptions }, { data: debts } ] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('goals').select('*').eq('user_id', userId),
@@ -116,6 +120,7 @@ export function useFinance() {
         })),
         debts: debts || []
       });
+      dataLoadedRef.current = true;
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
