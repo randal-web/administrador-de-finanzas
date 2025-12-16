@@ -34,6 +34,17 @@ export function useFinance() {
       }
       
       const session = data?.session;
+      
+      // Check for session expiry
+      const expiry = localStorage.getItem('session_expiry');
+      if (expiry && Date.now() > parseInt(expiry)) {
+        supabase.auth.signOut();
+        localStorage.removeItem('session_expiry');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchData(session.user.id);
@@ -43,6 +54,16 @@ export function useFinance() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Check for session expiry on auth state change as well
+      const expiry = localStorage.getItem('session_expiry');
+      if (expiry && Date.now() > parseInt(expiry)) {
+        supabase.auth.signOut();
+        localStorage.removeItem('session_expiry');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchData(session.user.id);
