@@ -39,7 +39,7 @@ const NavSwitch = ({ activeTab, setActiveTab }) => {
         <button
           key={tab.id}
           onClick={() => setActiveTab(tab.id)}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+          className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-sm font-medium transition-colors duration-200 ${
             activeTab === tab.id ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-200'
           }`}
         >
@@ -320,7 +320,7 @@ function App() {
                 </span>
               </div>
               
-              <div className="hidden md:block">
+              <div className="hidden xl:block">
                 <NavSwitch activeTab={activeTab} setActiveTab={setActiveTab} />
               </div>
             </div>
@@ -378,8 +378,8 @@ function App() {
         </div>
         
         {/* Mobile Navigation Tabs */}
-        <div className="md:hidden flex justify-center mt-2">
-          <div className="w-full max-w-sm bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-sm border border-white/20 dark:border-neutral-800/50 p-1">
+        <div className="xl:hidden flex justify-center mt-2 px-2">
+          <div className="w-full max-w-2xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-sm border border-white/20 dark:border-neutral-800/50 p-1">
             <NavSwitch activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
         </div>
