@@ -26,7 +26,14 @@ export function useFinance() {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error('Error checking session:', error);
+        setLoading(false);
+        return;
+      }
+      
+      const session = data?.session;
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchData(session.user.id);
@@ -70,8 +77,15 @@ export function useFinance() {
 
       setData({
         transactions: transactions || [],
-        goals: goals || [],
-        subscriptions: subscriptions || []
+        goals: (goals || []).map(g => ({
+          ...g,
+          targetAmount: g.target_amount,
+          currentAmount: g.current_amount
+        })),
+        subscriptions: (subscriptions || []).map(s => ({
+          ...s,
+          dueDay: s.due_day
+        }))
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -89,27 +103,46 @@ export function useFinance() {
     };
 
     // Optimistic update
+    const previousData = { ...data };
     setData(prev => ({
       ...prev,
       transactions: [newTransaction, ...prev.transactions]
     }));
 
     if (user && supabase) {
-      await supabase.from('transactions').insert([{
-        ...newTransaction,
+      const { error } = await supabase.from('transactions').insert([{
+        id: newTransaction.id,
+        description: newTransaction.description,
+        amount: newTransaction.amount,
+        type: newTransaction.type,
+        category: newTransaction.category,
+        date: newTransaction.date,
         user_id: user.id
       }]);
+
+      if (error) {
+        console.error('Error adding transaction:', error);
+        setData(previousData);
+        alert('Error saving transaction. Please try again.');
+      }
     }
   };
 
   const deleteTransaction = async (id) => {
+    const previousData = { ...data };
     setData(prev => ({
       ...prev,
       transactions: prev.transactions.filter(t => t.id !== id)
     }));
 
     if (user && supabase) {
-      await supabase.from('transactions').delete().eq('id', id);
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      
+      if (error) {
+        console.error('Error deleting transaction:', error);
+        setData(previousData);
+        alert('Error deleting transaction. Please try again.');
+      }
     }
   };
 
@@ -121,23 +154,33 @@ export function useFinance() {
       currentAmount: parseFloat(goal.currentAmount || 0)
     };
     
+    const previousData = { ...data };
     setData(prev => ({
       ...prev,
       goals: [...prev.goals, newGoal]
     }));
 
     if (user && supabase) {
-      await supabase.from('goals').insert([{
-        ...newGoal,
-        user_id: user.id,
-        target_amount: newGoal.targetAmount, // Snake case for DB
-        current_amount: newGoal.currentAmount
+      const { error } = await supabase.from('goals').insert([{
+        id: newGoal.id,
+        name: newGoal.name,
+        target_amount: newGoal.targetAmount,
+        current_amount: newGoal.currentAmount,
+        user_id: user.id
       }]);
+
+      if (error) {
+        console.error('Error adding goal:', error);
+        setData(previousData);
+        alert('Error saving goal. Please try again.');
+      }
     }
   };
 
   const updateGoal = async (id, amount) => {
     const numAmount = parseFloat(amount);
+    const previousData = { ...data };
+    
     setData(prev => ({
       ...prev,
       goals: prev.goals.map(g => 
@@ -146,18 +189,31 @@ export function useFinance() {
     }));
 
     if (user && supabase) {
-      await supabase.from('goals').update({ current_amount: numAmount }).eq('id', id);
+      const { error } = await supabase.from('goals').update({ current_amount: numAmount }).eq('id', id);
+
+      if (error) {
+        console.error('Error updating goal:', error);
+        setData(previousData);
+        alert('Error updating goal. Please try again.');
+      }
     }
   };
 
   const deleteGoal = async (id) => {
+    const previousData = { ...data };
     setData(prev => ({
       ...prev,
       goals: prev.goals.filter(g => g.id !== id)
     }));
 
     if (user && supabase) {
-      await supabase.from('goals').delete().eq('id', id);
+      const { error } = await supabase.from('goals').delete().eq('id', id);
+
+      if (error) {
+        console.error('Error deleting goal:', error);
+        setData(previousData);
+        alert('Error deleting goal. Please try again.');
+      }
     }
   };
 
@@ -169,28 +225,44 @@ export function useFinance() {
       dueDay: parseInt(subscription.dueDay)
     };
 
+    const previousData = { ...data };
     setData(prev => ({
       ...prev,
       subscriptions: [...prev.subscriptions, newSubscription]
     }));
 
     if (user && supabase) {
-      await supabase.from('subscriptions').insert([{
-        ...newSubscription,
-        user_id: user.id,
-        due_day: newSubscription.dueDay
+      const { error } = await supabase.from('subscriptions').insert([{
+        id: newSubscription.id,
+        name: newSubscription.name,
+        amount: newSubscription.amount,
+        due_day: newSubscription.dueDay,
+        user_id: user.id
       }]);
+
+      if (error) {
+        console.error('Error adding subscription:', error);
+        setData(previousData);
+        alert('Error saving subscription. Please try again.');
+      }
     }
   };
 
   const deleteSubscription = async (id) => {
+    const previousData = { ...data };
     setData(prev => ({
       ...prev,
       subscriptions: prev.subscriptions.filter(s => s.id !== id)
     }));
 
     if (user && supabase) {
-      await supabase.from('subscriptions').delete().eq('id', id);
+      const { error } = await supabase.from('subscriptions').delete().eq('id', id);
+
+      if (error) {
+        console.error('Error deleting subscription:', error);
+        setData(previousData);
+        alert('Error deleting subscription. Please try again.');
+      }
     }
   };
 

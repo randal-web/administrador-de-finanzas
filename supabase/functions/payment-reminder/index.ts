@@ -58,17 +58,54 @@ serve(async (req) => {
       // Si faltan 3 días o menos (y no es negativo/vencido hace mucho)
       if (daysRemaining <= 3 && daysRemaining >= 0) {
         emailsToSend.push({
-          from: 'Finanzas App <onboarding@resend.dev>',
+          from: 'Finanzas App <alertas@notifications.globalmanager.online>',
           to: user.email,
           subject: `🔔 Recordatorio: ${sub.name} vence pronto`,
+          headers: {
+            'X-Priority': '1',
+            'X-MSMail-Priority': 'High',
+            'Importance': 'High'
+          },
           html: `
-            <div style="font-family: sans-serif; color: #333;">
-              <h2>Recordatorio de Pago</h2>
-              <p>Hola,</p>
-              <p>Te recordamos que tu pago de <strong>${sub.name}</strong> por un monto de <strong>$${sub.amount}</strong> está próximo a vencer.</p>
-              <p><strong>Días restantes:</strong> ${daysRemaining === 0 ? 'Vence HOY' : daysRemaining}</p>
-              <br/>
-              <p>Saludos,<br/>Tu Administrador de Finanzas</p>
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+              <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Recordatorio de Pago</h1>
+              </div>
+              
+              <div style="padding: 30px; color: #334155;">
+                <p style="font-size: 16px; margin-bottom: 20px;">Hola,</p>
+                
+                <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">
+                  Este es un recordatorio amigable de que tienes un pago programado que vence pronto.
+                </p>
+                
+                <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Servicio</td>
+                      <td style="padding: 8px 0; color: #0f172a; font-weight: bold; text-align: right; font-size: 16px;">${sub.name}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Monto</td>
+                      <td style="padding: 8px 0; color: #0f172a; font-weight: bold; text-align: right; font-size: 16px;">$${sub.amount}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Vencimiento</td>
+                      <td style="padding: 8px 0; color: #ef4444; font-weight: bold; text-align: right; font-size: 16px;">
+                        ${daysRemaining === 0 ? '¡Vence HOY!' : `En ${daysRemaining} día(s)`}
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+
+                <p style="font-size: 14px; color: #64748b; text-align: center; margin-top: 30px;">
+                  Mantén tus finanzas bajo control con tu Administrador de Finanzas.
+                </p>
+              </div>
+              
+              <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #94a3b8;">
+                <p style="margin: 0;">Este es un mensaje automático, por favor no responder.</p>
+              </div>
             </div>
           `
         })
