@@ -21,16 +21,11 @@ const StatCard = ({ title, amount, icon: Icon, colorClass, bgClass, subtitle, de
 );
 
 export function Dashboard({ stats, transactions, onDelete }) {
-  // Calcular ahorros (basado en categoría 'Ahorro' o 'Inversión')
-  const savings = transactions
-    .filter(t => t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Inversión'))
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
   // Datos para la gráfica de barras
   const chartData = [
     { name: 'Ingresos', value: stats.income, color: '#34d399' }, // emerald-400 (softer)
     { name: 'Egresos', value: stats.expenses, color: '#fb7185' }, // rose-400 (softer)
-    { name: 'Ahorros', value: savings, color: '#60a5fa' }, // blue-400 (softer)
+    { name: 'Ahorros', value: stats.savings, color: '#60a5fa' }, // blue-400 (softer)
   ];
 
   return (
@@ -57,7 +52,7 @@ export function Dashboard({ stats, transactions, onDelete }) {
         />
         <StatCard 
           title="Ahorros" 
-          amount={savings} 
+          amount={stats.savings} 
           icon={PiggyBank} 
           colorClass="text-blue-500" 
           bgClass="bg-blue-50"

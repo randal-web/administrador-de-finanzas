@@ -286,6 +286,12 @@ export function useFinance() {
       .reduce((acc, curr) => acc + curr.amount, 0);
   };
 
+  const getSavings = () => {
+    return data.transactions
+      .filter(t => t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Inversión'))
+      .reduce((acc, curr) => acc + curr.amount, 0);
+  };
+
   return {
     user,
     loading,
@@ -302,7 +308,8 @@ export function useFinance() {
     stats: {
       balance: getBalance(),
       income: getIncome(),
-      expenses: getExpenses()
+      expenses: getExpenses(),
+      savings: getSavings()
     }
   };
 }

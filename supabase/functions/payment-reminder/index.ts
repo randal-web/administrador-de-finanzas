@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
+const CRON_SECRET = Deno.env.get('CRON_SECRET')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,15 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  // Check for cron secret
+  const authHeader = req.headers.get('Authorization')
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {
@@ -38,8 +48,9 @@ serve(async (req) => {
     
     if (subError) throw subError
 
-    const today = new Date().getDate()
     const emailsToSend = []
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Normalize to start of day for accurate comparison
 
     // 3. Iterar y buscar pagos próximos (3 días antes)
     for (const sub of subscriptions || []) {
@@ -48,14 +59,21 @@ serve(async (req) => {
       
       if (userError || !user || !user.email) continue
 
-      let daysRemaining = sub.due_day - today
-      
-      // Ajuste simple para cambio de mes (ej: hoy es 28, vence el 2)
-      if (daysRemaining < 0) {
-         daysRemaining += 30 // Aproximación
-      }
+      // --- Start of new date logic ---
+      let nextDueDate = new Date(today.getFullYear(), today.getMonth(), sub.due_day);
+      nextDueDate.setHours(0, 0, 0, 0);
 
-      // Si faltan 3 días o menos (y no es negativo/vencido hace mucho)
+      // If the due date in the current month has already passed, set it to next month
+      if (nextDueDate < today) {
+        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      }
+      
+      // Calculate the difference in whole days
+      const timeDiff = nextDueDate.getTime() - today.getTime();
+      const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+      // --- End of new date logic ---
+
+      // Si faltan 3 días o menos (y no es negativo/ya pasó)
       if (daysRemaining <= 3 && daysRemaining >= 0) {
         emailsToSend.push({
           from: 'Finanzas App <alertas@notifications.globalmanager.online>',

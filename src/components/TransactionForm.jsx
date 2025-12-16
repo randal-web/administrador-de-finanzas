@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PlusCircle, CheckCircle2 } from 'lucide-react';
 
 export function TransactionForm({ onAdd }) {
@@ -7,13 +7,18 @@ export function TransactionForm({ onAdd }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
 
+  useEffect(() => {
+    // Reset category when type changes to prevent invalid combinations
+    setCategory('');
+  }, [type]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!amount || !category) return;
 
     onAdd({
       type,
-      amount,
+      amount: parseFloat(amount),
       category,
       description,
       date: new Date().toISOString()
