@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { PlusCircle, CheckCircle2 } from 'lucide-react';
 
 export function TransactionForm({ onAdd }) {
@@ -7,10 +7,10 @@ export function TransactionForm({ onAdd }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
 
-  useEffect(() => {
-    // Reset category when type changes to prevent invalid combinations
+  const handleTypeChange = (newType) => {
+    setType(newType);
     setCategory('');
-  }, [type]);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -39,7 +39,7 @@ export function TransactionForm({ onAdd }) {
         />
         <button
           type="button"
-          onClick={() => setType('income')}
+          onClick={() => handleTypeChange('income')}
           className={`relative z-10 flex-1 py-3 rounded-xl font-medium text-sm transition-colors duration-200 ${
             type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-200'
           }`}
@@ -48,7 +48,7 @@ export function TransactionForm({ onAdd }) {
         </button>
         <button
           type="button"
-          onClick={() => setType('expense')}
+          onClick={() => handleTypeChange('expense')}
           className={`relative z-10 flex-1 py-3 rounded-xl font-medium text-sm transition-colors duration-200 ${
             type === 'expense' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-200'
           }`}

@@ -2,7 +2,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 import { History } from './History';
 
-const StatCard = ({ title, amount, icon: Icon, colorClass, bgClass, subtitle, delay }) => (
+// eslint-disable-next-line no-unused-vars
+const StatCard = ({ title, amount, icon: IconComponent, colorClass, bgClass, subtitle, delay }) => (
   <div 
     className="bg-white dark:bg-neutral-900 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-50 dark:border-neutral-800 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 group animate-scale-in"
     style={{ animationDelay: delay }}
@@ -13,7 +14,7 @@ const StatCard = ({ title, amount, icon: Icon, colorClass, bgClass, subtitle, de
         <h3 className={`text-3xl font-bold ${colorClass} tracking-tight`}>${amount.toFixed(2)}</h3>
       </div>
       <div className={`p-3 rounded-2xl ${bgClass} dark:bg-opacity-20 transition-transform duration-300 group-hover:scale-110`}>
-        <Icon size={22} className={colorClass.replace('text-', 'text-')} />
+        <IconComponent size={22} className={colorClass.replace('text-', 'text-')} />
       </div>
     </div>
     <p className="text-xs text-slate-400 dark:text-neutral-500 font-medium">{subtitle}</p>
