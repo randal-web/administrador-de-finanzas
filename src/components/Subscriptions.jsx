@@ -3,32 +3,64 @@ import { Calendar, Plus, Trash2, AlertCircle, CheckCircle2, Clock } from 'lucide
 
 export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
   const [isAdding, setIsAdding] = useState(false);
-  const [newSub, setNewSub] = useState({ name: '', amount: '', dueDay: '' });
+  const [newSub, setNewSub] = useState({ 
+    name: '', 
+    amount: '', 
+    dueDay: '', 
+    frequency: 'monthly', // monthly, yearly, one-time
+    date: '' // for yearly/one-time
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!newSub.name || !newSub.amount || !newSub.dueDay) return;
+    if (!newSub.name || !newSub.amount) return;
     
-    // Validate day is between 1 and 31
-    const day = parseInt(newSub.dueDay);
-    if (day < 1 || day > 31) return;
+    if (newSub.frequency === 'monthly') {
+      const day = parseInt(newSub.dueDay);
+      if (day < 1 || day > 31) return;
+    } else {
+      if (!newSub.date) return;
+    }
 
     onAdd(newSub);
-    setNewSub({ name: '', amount: '', dueDay: '' });
+    setNewSub({ name: '', amount: '', dueDay: '', frequency: 'monthly', date: '' });
     setIsAdding(false);
   };
 
-  const getDaysRemaining = (dueDay) => {
+  const getDaysRemaining = (sub) => {
     const today = new Date();
-    const currentDay = today.getDate();
+    today.setHours(0, 0, 0, 0);
     
-    if (dueDay >= currentDay) {
-      return dueDay - currentDay;
-    } else {
-      // Get days in current month to calculate days until next month's due date
-      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-      return (daysInMonth - currentDay) + dueDay;
+    if (sub.frequency === 'monthly' || !sub.frequency) {
+      const dueDay = parseInt(sub.dueDay);
+      const currentDay = today.getDate();
+      
+      if (dueDay >= currentDay) {
+        return dueDay - currentDay;
+      } else {
+        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        return (daysInMonth - currentDay) + dueDay;
+      }
+    } else if (sub.frequency === 'yearly') {
+      const [year, month, day] = sub.date.split('-').map(Number);
+      const targetDate = new Date(today.getFullYear(), month - 1, day);
+      
+      if (targetDate < today) {
+        targetDate.setFullYear(today.getFullYear() + 1);
+      }
+      
+      const diffTime = Math.abs(targetDate - today);
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    } else if (sub.frequency === 'one-time') {
+      const targetDate = new Date(sub.date);
+      targetDate.setHours(0, 0, 0, 0);
+      
+      if (targetDate < today) return -1; // Expired
+      
+      const diffTime = Math.abs(targetDate - today);
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
+    return 0;
   };
 
   const getStatusColor = (daysRemaining) => {
@@ -45,7 +77,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
 
   // Sort subscriptions by days remaining
   const sortedSubscriptions = [...subscriptions].sort((a, b) => {
-    return getDaysRemaining(a.dueDay) - getDaysRemaining(b.dueDay);
+    return getDaysRemaining(a) - getDaysRemaining(b);
   });
 
   return (
@@ -70,10 +102,10 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
 
       {isAdding && (
         <form onSubmit={handleSubmit} className="mb-8 p-6 bg-slate-50 dark:bg-neutral-800/50 rounded-3xl border border-slate-100 dark:border-neutral-700 animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <input
               type="text"
-              placeholder="Nombre (ej. Netflix, Alquiler)"
+              placeholder="Nombre (ej. Netflix, Seguro)"
               value={newSub.name}
               onChange={e => setNewSub({...newSub, name: e.target.value})}
               className="p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
@@ -81,13 +113,24 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
             />
             <input
               type="number"
-              placeholder="Monto mensual"
+              placeholder="Monto"
               value={newSub.amount}
               onChange={e => setNewSub({...newSub, amount: e.target.value})}
               className="p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
               required
             />
-            <div className="relative">
+            
+            <select
+              value={newSub.frequency}
+              onChange={e => setNewSub({...newSub, frequency: e.target.value})}
+              className="p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
+            >
+              <option value="monthly">Mensual</option>
+              <option value="yearly">Anual</option>
+              <option value="one-time">Único</option>
+            </select>
+
+            {newSub.frequency === 'monthly' ? (
               <input
                 type="number"
                 placeholder="Día de pago (1-31)"
@@ -98,10 +141,18 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                 className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
                 required
               />
-            </div>
+            ) : (
+              <input
+                type="date"
+                value={newSub.date}
+                onChange={e => setNewSub({...newSub, date: e.target.value})}
+                className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
+                required
+              />
+            )}
           </div>
-          <button type="submit" className="w-full bg-purple-500 text-white py-4 rounded-2xl hover:bg-purple-600 font-medium transition-all shadow-lg shadow-purple-200 dark:shadow-purple-900/20 hover:shadow-xl hover:shadow-purple-300 transform hover:-translate-y-0.5">
-            Guardar Recordatorio
+          <button type="submit" className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-2xl font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg shadow-slate-200 dark:shadow-none">
+            Guardar Pago
           </button>
         </form>
       )}
@@ -116,8 +167,20 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
           </div>
         ) : (
           sortedSubscriptions.map(sub => {
-            const daysRemaining = getDaysRemaining(sub.dueDay);
+            const daysRemaining = getDaysRemaining(sub);
             const statusColor = getStatusColor(daysRemaining);
+            
+            let dateText = '';
+            if (sub.frequency === 'monthly' || !sub.frequency) {
+              dateText = `Día ${sub.dueDay} de cada mes`;
+            } else if (sub.frequency === 'yearly') {
+              const [year, month, day] = sub.date.split('-');
+              const date = new Date(year, month - 1, day);
+              dateText = `Anual: ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
+            } else {
+              const date = new Date(sub.date);
+              dateText = `Único: ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+            }
             
             return (
               <div key={sub.id} className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden">
@@ -130,7 +193,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="font-bold text-slate-800 dark:text-white text-lg">{sub.name}</h3>
-                    <p className="text-xs text-slate-400 dark:text-neutral-500 font-medium mt-1">Día {sub.dueDay} de cada mes</p>
+                    <p className="text-xs text-slate-400 dark:text-neutral-500 font-medium mt-1">{dateText}</p>
                   </div>
                   <div className="text-right">
                     <span className="text-xl font-bold text-slate-700 dark:text-neutral-200">${sub.amount.toFixed(2)}</span>

@@ -105,7 +105,9 @@ export function useFinance() {
         })),
         subscriptions: (subscriptions || []).map(s => ({
           ...s,
-          dueDay: s.due_day
+          dueDay: s.due_day,
+          frequency: s.frequency || 'monthly',
+          date: s.due_date
         }))
       });
     } catch (error) {
@@ -287,7 +289,9 @@ export function useFinance() {
       ...subscription,
       id: crypto.randomUUID(),
       amount: parseFloat(subscription.amount),
-      dueDay: parseInt(subscription.dueDay)
+      dueDay: subscription.dueDay ? parseInt(subscription.dueDay) : null,
+      frequency: subscription.frequency || 'monthly',
+      date: subscription.date || null
     };
 
     const previousData = { ...data };
@@ -302,6 +306,8 @@ export function useFinance() {
         name: newSubscription.name,
         amount: newSubscription.amount,
         due_day: newSubscription.dueDay,
+        frequency: newSubscription.frequency,
+        due_date: newSubscription.date,
         user_id: user.id
       }]);
 
