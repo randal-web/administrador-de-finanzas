@@ -6,7 +6,8 @@ const STORAGE_KEY = 'finance_app_data';
 const initialData = {
   transactions: [],
   goals: [],
-  subscriptions: []
+  subscriptions: [],
+  debts: []
 };
 
 export function useFinance() {
@@ -16,6 +17,7 @@ export function useFinance() {
     const saved = localStorage.getItem(STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : initialData;
     if (!parsed.subscriptions) parsed.subscriptions = [];
+    if (!parsed.debts) parsed.debts = [];
     return parsed;
   });
 
@@ -72,6 +74,7 @@ export function useFinance() {
         const saved = localStorage.getItem(STORAGE_KEY);
         const parsed = saved ? JSON.parse(saved) : initialData;
         if (!parsed.subscriptions) parsed.subscriptions = [];
+        if (!parsed.debts) parsed.debts = [];
         setData(parsed);
         setLoading(false);
       }
@@ -90,10 +93,11 @@ export function useFinance() {
   const fetchData = async (userId) => {
     try {
       setLoading(true);
-      const [ { data: transactions }, { data: goals }, { data: subscriptions } ] = await Promise.all([
+      const [ { data: transactions }, { data: goals }, { data: subscriptions }, { data: debts } ] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('goals').select('*').eq('user_id', userId),
-        supabase.from('subscriptions').select('*').eq('user_id', userId)
+        supabase.from('subscriptions').select('*').eq('user_id', userId),
+        supabase.from('debts').select('*').eq('user_id', userId)
       ]);
 
       setData({
@@ -109,7 +113,8 @@ export function useFinance() {
           frequency: s.frequency || 'monthly',
           date: s.due_date,
           lastPaymentDate: s.last_payment_date
-        }))
+        })),
+        debts: debts || []
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -370,6 +375,92 @@ export function useFinance() {
     return { error: null };
   };
 
+  const addDebt = async (debt) => {
+    const newDebt = {
+      ...debt,
+      id: crypto.randomUUID(),
+      amount: parseFloat(debt.amount)
+    };
+
+    const previousData = { ...data };
+    setData(prev => ({
+      ...prev,
+      debts: [...prev.debts, newDebt]
+    }));
+
+    if (user && supabase) {
+      const { error } = await supabase.from('debts').insert([{
+        id: newDebt.id,
+        name: newDebt.name,
+        amount: newDebt.amount,
+        user_id: user.id
+      }]);
+
+      if (error) {
+        console.error('Error adding debt:', error);
+        setData(previousData);
+        return { error };
+      }
+    }
+    return { error: null };
+  };
+
+  const payDebt = async (id, amount) => {
+    const paymentAmount = parseFloat(amount);
+    const debt = data.debts.find(d => d.id === id);
+    if (!debt) return { error: 'Debt not found' };
+
+    const newAmount = Math.max(0, debt.amount - paymentAmount);
+    const previousData = { ...data };
+
+    setData(prev => ({
+      ...prev,
+      debts: prev.debts.map(d => d.id === id ? { ...d, amount: newAmount } : d)
+    }));
+
+    if (user && supabase) {
+      const { error } = await supabase
+        .from('debts')
+        .update({ amount: newAmount })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating debt:', error);
+        setData(previousData);
+        return { error };
+      }
+
+      // Auto-create transaction for the debt payment
+      await addTransaction({
+        description: `Abono a deuda: ${debt.name}`,
+        amount: paymentAmount,
+        type: 'expense',
+        category: 'Deudas',
+        date: new Date().toISOString()
+      });
+    }
+    return { error: null };
+  };
+
+  const deleteDebt = async (id) => {
+    const previousData = { ...data };
+    setData(prev => ({
+      ...prev,
+      debts: prev.debts.filter(d => d.id !== id)
+    }));
+
+    if (user && supabase) {
+      const { error } = await supabase.from('debts').delete().eq('id', id);
+
+      if (error) {
+        console.error('Error deleting debt:', error);
+        setData(previousData);
+        return { error };
+      }
+    }
+    return { error: null };
+  };
+
   const getBalance = () => {
     return data.transactions.reduce((acc, curr) => {
       return curr.type === 'income' 
@@ -402,6 +493,7 @@ export function useFinance() {
     transactions: data.transactions,
     goals: data.goals,
     subscriptions: data.subscriptions,
+    debts: data.debts,
     addTransaction,
     deleteTransaction,
     addGoal,
@@ -411,6 +503,9 @@ export function useFinance() {
     addSubscription,
     updateSubscription,
     deleteSubscription,
+    addDebt,
+    payDebt,
+    deleteDebt,
     stats: {
       balance: getBalance(),
       income: getIncome(),

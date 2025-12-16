@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar, LogIn, LogOut, Loader2, Bell } from 'lucide-react';
+import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar, LogIn, LogOut, Loader2, Bell, CreditCard } from 'lucide-react';
 import { useFinance } from './hooks/useFinance';
 import { Dashboard } from './components/Dashboard';
 import { Goals } from './components/Goals';
 import { Subscriptions } from './components/Subscriptions';
+import { Debts } from './components/Debts';
 import { TransactionForm } from './components/TransactionForm';
 import { Auth } from './components/Auth';
 import { Notifications } from './components/Notifications';
@@ -16,7 +17,8 @@ const NavSwitch = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: 'transactions', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'goals', icon: Target, label: 'Metas' },
-    { id: 'subscriptions', icon: Calendar, label: 'Pagos' }
+    { id: 'subscriptions', icon: Calendar, label: 'Pagos' },
+    { id: 'debts', icon: CreditCard, label: 'Deudas' }
   ];
   
   const activeIndex = tabs.findIndex(tab => tab.id === activeTab);
@@ -27,7 +29,7 @@ const NavSwitch = ({ activeTab, setActiveTab }) => {
         className="absolute top-1 bottom-1 bg-white dark:bg-neutral-700 shadow-sm ring-1 ring-slate-200 dark:ring-neutral-600 rounded-lg md:rounded-full transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] -z-10"
         style={{
           left: '4px',
-          width: 'calc((100% - 8px) / 3)',
+          width: 'calc((100% - 8px) / 4)',
           transform: `translateX(${activeIndex * 100}%)`
         }}
       />
@@ -54,6 +56,7 @@ function App() {
     transactions, 
     goals,
     subscriptions,
+    debts,
     addTransaction, 
     deleteTransaction, 
     addGoal, 
@@ -63,6 +66,9 @@ function App() {
     addSubscription,
     updateSubscription,
     deleteSubscription,
+    addDebt,
+    payDebt,
+    deleteDebt,
     stats 
   } = useFinance();
 
@@ -134,6 +140,24 @@ function App() {
     else showToast('Suscripción eliminada');
   };
 
+  const handleAddDebt = async (debt) => {
+    const { error } = await addDebt(debt);
+    if (error) showToast('Error al guardar deuda', 'error');
+    else showToast('Deuda guardada correctamente');
+  };
+
+  const handlePayDebt = async (id, amount) => {
+    const { error } = await payDebt(id, amount);
+    if (error) showToast('Error al registrar pago de deuda', 'error');
+    else showToast('Pago de deuda registrado correctamente');
+  };
+
+  const handleDeleteDebt = async (id) => {
+    const { error } = await deleteDebt(id);
+    if (error) showToast('Error al eliminar deuda', 'error');
+    else showToast('Deuda eliminada');
+  };
+
   // Calculate notification count
   const notificationCount = subscriptions.filter(sub => getDaysRemaining(sub.dueDay) <= 5).length;
 
@@ -196,6 +220,15 @@ function App() {
           onAdd={handleAddGoal} 
           onContribute={handleContributeGoal} 
           onDelete={handleDeleteGoal} 
+        />
+      );
+    } else if (activeTab === 'debts') {
+      content = (
+        <Debts 
+          debts={debts} 
+          onAdd={handleAddDebt} 
+          onPay={handlePayDebt} 
+          onDelete={handleDeleteDebt} 
         />
       );
     } else {
