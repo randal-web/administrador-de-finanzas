@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export function Auth() {
   const [loading, setLoading] = useState(false);
@@ -20,6 +20,40 @@ export function Auth() {
       setError("Supabase no está configurado. Por favor agrega las variables de entorno.");
       setLoading(false);
       return;
+    }
+
+    if (isSignUp) {
+      const minLength = 8;
+      const hasUpperCase = /[A-Z]/.test(password);
+      const hasLowerCase = /[a-z]/.test(password);
+      const hasNumbers = /\d/.test(password);
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+      if (password.length < minLength) {
+        setError("La contraseña debe tener al menos 8 caracteres.");
+        setLoading(false);
+        return;
+      }
+      if (!hasUpperCase) {
+        setError("La contraseña debe tener al menos una letra mayúscula.");
+        setLoading(false);
+        return;
+      }
+      if (!hasLowerCase) {
+        setError("La contraseña debe tener al menos una letra minúscula.");
+        setLoading(false);
+        return;
+      }
+      if (!hasNumbers) {
+        setError("La contraseña debe tener al menos un número.");
+        setLoading(false);
+        return;
+      }
+      if (!hasSpecialChar) {
+        setError("La contraseña debe tener al menos un carácter especial (!@#$%^&*).");
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -123,5 +157,3 @@ export function Auth() {
     </div>
   );
 }
-
-import { CheckCircle2 } from 'lucide-react';
