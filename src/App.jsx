@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar, LogIn, LogOut, Loader2, Bell, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Target, Plus, X, Wallet, Moon, Sun, Calendar, LogIn, LogOut, Loader2, Bell, CreditCard, TrendingUp } from 'lucide-react';
 import { useFinance } from './hooks/useFinance';
 import { Dashboard } from './components/Dashboard';
 import { Goals } from './components/Goals';
 import { Subscriptions } from './components/Subscriptions';
 import { Debts } from './components/Debts';
+import { ExpectedIncome } from './components/ExpectedIncome';
 import { TransactionForm } from './components/TransactionForm';
 import { Auth } from './components/Auth';
 import { Notifications } from './components/Notifications';
@@ -18,7 +19,8 @@ const NavSwitch = ({ activeTab, setActiveTab }) => {
     { id: 'transactions', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'goals', icon: Target, label: 'Metas' },
     { id: 'subscriptions', icon: Calendar, label: 'Pagos' },
-    { id: 'debts', icon: CreditCard, label: 'Deudas' }
+    { id: 'debts', icon: CreditCard, label: 'Deudas' },
+    { id: 'income', icon: TrendingUp, label: 'Ingresos' }
   ];
   
   const activeIndex = tabs.findIndex(tab => tab.id === activeTab);
@@ -29,7 +31,7 @@ const NavSwitch = ({ activeTab, setActiveTab }) => {
         className="absolute top-1 bottom-1 bg-white dark:bg-neutral-700 shadow-sm ring-1 ring-slate-200 dark:ring-neutral-600 rounded-lg md:rounded-full transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] -z-10"
         style={{
           left: '4px',
-          width: 'calc((100% - 8px) / 4)',
+          width: 'calc((100% - 8px) / 5)',
           transform: `translateX(${activeIndex * 100}%)`
         }}
       />
@@ -56,7 +58,7 @@ function App() {
     transactions, 
     goals,
     subscriptions,
-    debts,
+    expectedIncome,
     addTransaction, 
     deleteTransaction, 
     addGoal, 
@@ -68,6 +70,9 @@ function App() {
     deleteSubscription,
     addDebt,
     payDebt,
+    deleteDebt,
+    addExpectedIncome,
+    deleteExpectedIncome
     deleteDebt,
     stats 
   } = useFinance();
@@ -155,6 +160,18 @@ function App() {
   const handleDeleteDebt = async (id) => {
     const { error } = await deleteDebt(id);
     if (error) showToast('Error al eliminar deuda', 'error');
+  const handleAddExpectedIncome = async (income) => {
+    const { error } = await addExpectedIncome(income);
+    if (error) showToast('Error al guardar ingreso esperado', 'error');
+    else showToast('Ingreso esperado guardado correctamente');
+  };
+
+  const handleDeleteExpectedIncome = async (id) => {
+    const { error } = await deleteExpectedIncome(id);
+    if (error) showToast('Error al eliminar ingreso esperado', 'error');
+    else showToast('Ingreso esperado eliminado');
+  };
+
     else showToast('Deuda eliminada');
   };
 
@@ -229,6 +246,14 @@ function App() {
           onAdd={handleAddDebt} 
           onPay={handlePayDebt} 
           onDelete={handleDeleteDebt} 
+        />
+      );
+    } else if (activeTab === 'income') {
+      content = (
+        <ExpectedIncome 
+          income={expectedIncome} 
+          onAdd={handleAddExpectedIncome} 
+          onDelete={handleDeleteExpectedIncome} 
         />
       );
     } else {
@@ -361,7 +386,7 @@ function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8">
         <header className="mb-6 md:mb-10 px-2">
           <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white capitalize tracking-tight">
-            {activeTab === 'transactions' ? 'Resumen General' : activeTab === 'goals' ? 'Mis Metas' : 'Pagos Recurrentes'}
+            {activeTab === 'transactions' ? 'Resumen General' : activeTab === 'goals' ? 'Mis Metas' : activeTab === 'debts' ? 'Mis Deudas' : activeTab === 'income' ? 'Ingresos Esperados' : 'Pagos Recurrentes'}
           </h2>
           <p className="text-sm md:text-base text-slate-500 dark:text-neutral-400 mt-1 font-medium">
             {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

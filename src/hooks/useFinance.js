@@ -7,7 +7,8 @@ const initialData = {
   transactions: [],
   goals: [],
   subscriptions: [],
-  debts: []
+  debts: [],
+  expectedIncome: []
 };
 
 export function useFinance() {
@@ -19,6 +20,7 @@ export function useFinance() {
     const parsed = saved ? JSON.parse(saved) : initialData;
     if (!parsed.subscriptions) parsed.subscriptions = [];
     if (!parsed.debts) parsed.debts = [];
+    if (!parsed.expectedIncome) parsed.expectedIncome = [];
     return parsed;
   });
 
@@ -78,6 +80,7 @@ export function useFinance() {
         const parsed = saved ? JSON.parse(saved) : initialData;
         if (!parsed.subscriptions) parsed.subscriptions = [];
         if (!parsed.debts) parsed.debts = [];
+        if (!parsed.expectedIncome) parsed.expectedIncome = [];
         setData(parsed);
         setLoading(false);
         dataLoadedRef.current = false;
@@ -96,12 +99,12 @@ export function useFinance() {
 
   const fetchData = async (userId) => {
     try {
-      if (!dataLoadedRef.current) setLoading(true);
-      const [ { data: transactions }, { data: goals }, { data: subscriptions }, { data: debts } ] = await Promise.all([
+      if (!dataLoadedRef.current) setLoading(true);, { data: expectedIncome } ] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('goals').select('*').eq('user_id', userId),
         supabase.from('subscriptions').select('*').eq('user_id', userId),
-        supabase.from('debts').select('*').eq('user_id', userId)
+        supabase.from('debts').select('*').eq('user_id', userId),
+        supabase.from('expected_income').select('*').eq('user_id', userId)
       ]);
 
       setData({
@@ -118,6 +121,8 @@ export function useFinance() {
           date: s.due_date,
           lastPaymentDate: s.last_payment_date
         })),
+        debts: debts || [],
+        expectedIncome: expectedIncome
         debts: debts || []
       });
       dataLoadedRef.current = true;
@@ -382,9 +387,8 @@ export function useFinance() {
 
   const addDebt = async (debt) => {
     const newDebt = {
-      ...debt,
-      id: crypto.randomUUID(),
-      amount: parseFloat(debt.amount)
+      ...debt,,
+      date: debt.date || new Date().toISOString().split('T')[0]
     };
 
     const previousData = { ...data };
@@ -396,6 +400,9 @@ export function useFinance() {
     if (user && supabase) {
       const { error } = await supabase.from('debts').insert([{
         id: newDebt.id,
+        name: newDebt.name,
+        amount: newDebt.amount,
+        date: newDebt.date
         name: newDebt.name,
         amount: newDebt.amount,
         user_id: user.id
@@ -462,7 +469,61 @@ export function useFinance() {
         setData(previousData);
         return { error };
       }
+    }addExpectedIncome = async (income) => {
+    const newIncome = {
+      ...income,
+      id: crypto.randomUUID(),
+      amount: parseFloat(income.amount),
+      date: income.date || new Date().toISOString().split('T')[0]
+    };
+
+    const previousData = { ...data };
+    setData(prev => ({
+      ...prev,
+      expectedIncome: [...prev.expectedIncome, newIncome]
+    }));
+
+    if (user && supabase) {
+      const { error } = await supabase.from('expected_income').insert([{
+        id: newIncome.id,
+        source: newIncome.source,
+        amount: newIncome.amount,
+        date: newIncome.date,
+        user_id: user.id
+      }]);
+
+      if (error) {
+        console.error('Error adding expected income:', error);
+        setData(previousData);
+        return { error };
+      }
     }
+    return { error: null };
+  };
+
+  const deleteExpectedIncome = async (id) => {
+    expectedIncome: data.expectedIncome,
+    addTransaction,
+    deleteTransaction,
+    addGoal,
+    updateGoal,
+    addGoalContribution,
+    deleteGoal,
+    addSubscription,
+    updateSubscription,
+    deleteSubscription,
+    addDebt,
+    payDebt,
+    deleteDebt,
+    addExpectedIncome,
+    deleteExpectedIncomea(previousData);
+        return { error };
+      }
+    }
+    return { error: null };
+  };
+
+  const 
     return { error: null };
   };
 
