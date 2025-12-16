@@ -61,6 +61,7 @@ function App() {
     addGoalContribution,
     deleteGoal,
     addSubscription,
+    updateSubscription,
     deleteSubscription,
     stats 
   } = useFinance();
@@ -219,6 +220,12 @@ function App() {
                 });
                 if (error) showToast('Error al registrar pago', 'error');
                 else {
+                  if (sub.frequency === 'one-time') {
+                    await updateSubscription(sub.id, { status: 'paid' });
+                  } else {
+                    // For monthly/yearly, update the last payment date
+                    await updateSubscription(sub.id, { lastPaymentDate: new Date().toISOString() });
+                  }
                   const newBalance = stats.balance - parseFloat(sub.amount);
                   showToast(`Pago registrado correctamente. Balance actual: $${newBalance.toFixed(2)}`);
                 }
@@ -258,6 +265,17 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
+              {user?.email && (
+                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full border border-slate-200 dark:border-neutral-700">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-xs font-bold">
+                    {user.email.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-medium text-slate-600 dark:text-neutral-300 max-w-[150px] truncate">
+                    {user.email}
+                  </span>
+                </div>
+              )}
+
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}

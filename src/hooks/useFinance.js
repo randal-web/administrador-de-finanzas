@@ -107,7 +107,8 @@ export function useFinance() {
           ...s,
           dueDay: s.due_day,
           frequency: s.frequency || 'monthly',
-          date: s.due_date
+          date: s.due_date,
+          lastPaymentDate: s.last_payment_date
         }))
       });
     } catch (error) {
@@ -312,9 +313,39 @@ export function useFinance() {
       }]);
 
       if (error) {
-        console.error('Error adding subscription:', error);
+        console.error('Error adding subscription:', error.message, error.details);
         setData(previousData);
         return { error };
+      }
+    }
+    return { error: null };
+  };
+
+  const updateSubscription = async (id, updates) => {
+    const previousData = { ...data };
+    setData(prev => ({
+      ...prev,
+      subscriptions: prev.subscriptions.map(s => 
+        s.id === id ? { ...s, ...updates } : s
+      )
+    }));
+
+    if (user && supabase) {
+      const dbUpdates = {};
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.lastPaymentDate !== undefined) dbUpdates.last_payment_date = updates.lastPaymentDate;
+
+      if (Object.keys(dbUpdates).length > 0) {
+        const { error } = await supabase
+          .from('subscriptions')
+          .update(dbUpdates)
+          .eq('id', id);
+
+        if (error) {
+          console.error('Error updating subscription:', error);
+          setData(previousData);
+          return { error };
+        }
       }
     }
     return { error: null };
@@ -378,6 +409,7 @@ export function useFinance() {
     addGoalContribution,
     deleteGoal,
     addSubscription,
+    updateSubscription,
     deleteSubscription,
     stats: {
       balance: getBalance(),

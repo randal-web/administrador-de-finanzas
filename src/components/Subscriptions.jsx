@@ -75,6 +75,21 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
     return `Vence en ${daysRemaining} días`;
   };
 
+  const isPaidCurrentCycle = (sub) => {
+    if (!sub.lastPaymentDate) return false;
+    
+    const lastPayment = new Date(sub.lastPaymentDate);
+    const today = new Date();
+    
+    if (sub.frequency === 'monthly' || !sub.frequency) {
+      return lastPayment.getMonth() === today.getMonth() && 
+             lastPayment.getFullYear() === today.getFullYear();
+    } else if (sub.frequency === 'yearly') {
+      return lastPayment.getFullYear() === today.getFullYear();
+    }
+    return false;
+  };
+
   // Sort subscriptions by days remaining
   const sortedSubscriptions = [...subscriptions].sort((a, b) => {
     return getDaysRemaining(a) - getDaysRemaining(b);
@@ -169,6 +184,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
           sortedSubscriptions.map(sub => {
             const daysRemaining = getDaysRemaining(sub);
             const statusColor = getStatusColor(daysRemaining);
+            const isPaid = isPaidCurrentCycle(sub);
             
             let dateText = '';
             if (sub.frequency === 'monthly' || !sub.frequency) {
@@ -184,6 +200,12 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
             
             return (
               <div key={sub.id} className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden">
+                {isPaid && sub.frequency !== 'one-time' && (
+                  <div className="absolute top-0 left-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-10">
+                    {sub.frequency === 'monthly' ? 'PAGADO ESTE MES' : 'PAGADO ESTE AÑO'}
+                  </div>
+                )}
+                
                 <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                    <button onClick={() => onDelete(sub.id)} className="text-slate-300 dark:text-neutral-600 hover:text-rose-400 dark:hover:text-rose-400 transition-colors bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20">
                     <Trash2 size={18} />
@@ -205,12 +227,21 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                   <span className="text-sm font-bold">{getStatusText(daysRemaining)}</span>
                 </div>
 
-                <button 
-                  onClick={() => onPay && onPay(sub)}
-                  className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium text-sm transition-all flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={16} /> Registrar Pago
-                </button>
+                {sub.status === 'paid' || isPaid ? (
+                  <button 
+                    disabled
+                    className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium text-sm flex items-center justify-center gap-2 cursor-default"
+                  >
+                    <CheckCircle2 size={16} /> {sub.status === 'paid' ? 'Pagado' : 'Pagado (Ciclo Actual)'}
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => onPay && onPay(sub)}
+                    className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium text-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={16} /> Registrar Pago
+                  </button>
+                )}
               </div>
             );
           })
