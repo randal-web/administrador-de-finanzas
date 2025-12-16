@@ -145,6 +145,19 @@ export function Auth() {
           </button>
         </form>
 
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('dev@admin.com');
+              setPassword('Dev12345!');
+            }}
+            className="mt-4 w-full bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 p-3 rounded-xl font-medium text-sm hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors border border-dashed border-slate-300 dark:border-neutral-700 flex items-center justify-center gap-2"
+          >
+            ⚡ Rellenar Usuario Dev
+          </button>
+        )}
+
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsSignUp(!isSignUp)}

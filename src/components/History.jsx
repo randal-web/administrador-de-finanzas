@@ -8,7 +8,7 @@ export function History({ transactions, onDelete }) {
         <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium mt-1">Últimos movimientos registrados</p>
       </div>
       
-      <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1">
+      <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1 max-h-[400px]">
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-12 text-slate-400 dark:text-neutral-600">
             <div className="w-16 h-16 bg-slate-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-4">

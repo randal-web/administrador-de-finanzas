@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Calendar, Plus, Trash2, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
-export function Subscriptions({ subscriptions, onAdd, onDelete }) {
+export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
   const [isAdding, setIsAdding] = useState(false);
   const [newSub, setNewSub] = useState({ name: '', amount: '', dueDay: '' });
 
@@ -137,10 +137,17 @@ export function Subscriptions({ subscriptions, onAdd, onDelete }) {
                   </div>
                 </div>
                 
-                <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl ${statusColor} transition-colors`}>
+                <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl ${statusColor} transition-colors mb-3`}>
                   {daysRemaining <= 3 ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
                   <span className="text-sm font-bold">{getStatusText(daysRemaining)}</span>
                 </div>
+
+                <button 
+                  onClick={() => onPay && onPay(sub)}
+                  className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium text-sm transition-all flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={16} /> Registrar Pago
+                </button>
               </div>
             );
           })
