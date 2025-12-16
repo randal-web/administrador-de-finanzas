@@ -123,9 +123,10 @@ export function useFinance() {
       if (error) {
         console.error('Error adding transaction:', error);
         setData(previousData);
-        alert('Error saving transaction. Please try again.');
+        return { error };
       }
     }
+    return { error: null };
   };
 
   const deleteTransaction = async (id) => {
@@ -141,9 +142,10 @@ export function useFinance() {
       if (error) {
         console.error('Error deleting transaction:', error);
         setData(previousData);
-        alert('Error deleting transaction. Please try again.');
+        return { error };
       }
     }
+    return { error: null };
   };
 
   const addGoal = async (goal) => {
@@ -172,9 +174,10 @@ export function useFinance() {
       if (error) {
         console.error('Error adding goal:', error);
         setData(previousData);
-        alert('Error saving goal. Please try again.');
+        return { error };
       }
     }
+    return { error: null };
   };
 
   const updateGoal = async (id, amount) => {
@@ -194,9 +197,49 @@ export function useFinance() {
       if (error) {
         console.error('Error updating goal:', error);
         setData(previousData);
-        alert('Error updating goal. Please try again.');
+        return { error };
       }
     }
+    return { error: null };
+  };
+
+  const addGoalContribution = async (id, amount) => {
+    const contribution = parseFloat(amount);
+    if (isNaN(contribution) || contribution <= 0) return { error: 'Monto inválido' };
+
+    const goal = data.goals.find(g => g.id === id);
+    if (!goal) return { error: 'Meta no encontrada' };
+
+    const newCurrentAmount = (goal.currentAmount || 0) + contribution;
+    const previousData = { ...data };
+
+    // Optimistic update
+    setData(prev => ({
+      ...prev,
+      goals: prev.goals.map(g => 
+        g.id === id ? { ...g, currentAmount: newCurrentAmount } : g
+      )
+    }));
+
+    if (user && supabase) {
+      const { error } = await supabase.from('goals').update({ current_amount: newCurrentAmount }).eq('id', id);
+
+      if (error) {
+        console.error('Error updating goal:', error);
+        setData(previousData);
+        return { error };
+      }
+
+      // Auto-create transaction for the contribution
+      await addTransaction({
+        description: `Aporte a meta: ${goal.name}`,
+        amount: contribution,
+        type: 'expense',
+        category: 'Ahorro',
+        date: new Date().toISOString()
+      });
+    }
+    return { error: null };
   };
 
   const deleteGoal = async (id) => {
@@ -212,9 +255,10 @@ export function useFinance() {
       if (error) {
         console.error('Error deleting goal:', error);
         setData(previousData);
-        alert('Error deleting goal. Please try again.');
+        return { error };
       }
     }
+    return { error: null };
   };
 
   const addSubscription = async (subscription) => {
@@ -243,9 +287,10 @@ export function useFinance() {
       if (error) {
         console.error('Error adding subscription:', error);
         setData(previousData);
-        alert('Error saving subscription. Please try again.');
+        return { error };
       }
     }
+    return { error: null };
   };
 
   const deleteSubscription = async (id) => {
@@ -261,9 +306,10 @@ export function useFinance() {
       if (error) {
         console.error('Error deleting subscription:', error);
         setData(previousData);
-        alert('Error deleting subscription. Please try again.');
+        return { error };
       }
     }
+    return { error: null };
   };
 
   const getBalance = () => {
@@ -302,6 +348,7 @@ export function useFinance() {
     deleteTransaction,
     addGoal,
     updateGoal,
+    addGoalContribution,
     deleteGoal,
     addSubscription,
     deleteSubscription,

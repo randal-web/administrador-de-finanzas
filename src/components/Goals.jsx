@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Target, Plus, Trash2, Edit2, Check } from 'lucide-react';
 
-export function Goals({ goals, onAdd, onUpdate, onDelete }) {
+export function Goals({ goals, onAdd, onContribute, onDelete }) {
   const [isAdding, setIsAdding] = useState(false);
   const [newGoal, setNewGoal] = useState({ name: '', targetAmount: '', currentAmount: '' });
   const [editingId, setEditingId] = useState(null);
-  const [editAmount, setEditAmount] = useState('');
+  const [contributionAmount, setContributionAmount] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -16,11 +16,11 @@ export function Goals({ goals, onAdd, onUpdate, onDelete }) {
     setIsAdding(false);
   };
 
-  const handleUpdate = (id) => {
-    if (editAmount === '') return;
-    onUpdate(id, editAmount);
+  const handleContribute = (id) => {
+    if (!contributionAmount || parseFloat(contributionAmount) <= 0) return;
+    onContribute(id, contributionAmount);
     setEditingId(null);
-    setEditAmount('');
+    setContributionAmount('');
   };
 
   return (
@@ -115,13 +115,13 @@ export function Goals({ goals, onAdd, onUpdate, onDelete }) {
                   <div className="flex items-center gap-2 w-full bg-slate-50 dark:bg-neutral-800 p-2 rounded-2xl">
                     <input
                       type="number"
-                      value={editAmount}
-                      onChange={e => setEditAmount(e.target.value)}
+                      value={contributionAmount}
+                      onChange={e => setContributionAmount(e.target.value)}
                       className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none font-medium text-slate-800 dark:text-white"
-                      placeholder="Nuevo monto"
+                      placeholder="Monto a agregar"
                       autoFocus
                     />
-                    <button onClick={() => handleUpdate(goal.id)} className="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-2 rounded-xl transition-colors">
+                    <button onClick={() => handleContribute(goal.id)} className="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-2 rounded-xl transition-colors">
                       <Check size={20} />
                     </button>
                   </div>
@@ -129,11 +129,11 @@ export function Goals({ goals, onAdd, onUpdate, onDelete }) {
                   <button 
                     onClick={() => {
                       setEditingId(goal.id);
-                      setEditAmount(goal.currentAmount);
+                      setContributionAmount('');
                     }}
                     className="w-full py-3 rounded-2xl bg-slate-50 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-sm transition-all flex items-center justify-center gap-2 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600 dark:group-hover:text-blue-400"
                   >
-                    <Edit2 size={16} /> Actualizar ahorro
+                    <Plus size={16} /> Agregar ahorro
                   </button>
                 )}
               </div>

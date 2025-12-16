@@ -7,6 +7,8 @@ import { Subscriptions } from './components/Subscriptions';
 import { TransactionForm } from './components/TransactionForm';
 import { Auth } from './components/Auth';
 import { Notifications } from './components/Notifications';
+import { ConfirmModal } from './components/ConfirmModal';
+import { Toast } from './components/Toast';
 import { supabase } from './lib/supabase';
 import { getDaysRemaining } from './lib/utils';
 
@@ -56,6 +58,7 @@ function App() {
     deleteTransaction, 
     addGoal, 
     updateGoal, 
+    addGoalContribution,
     deleteGoal,
     addSubscription,
     deleteSubscription,
@@ -65,6 +68,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('transactions');
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -72,6 +77,61 @@ function App() {
     }
     return false;
   });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  const handleAddTransaction = async (transaction) => {
+    const { error } = await addTransaction(transaction);
+    if (error) showToast('Error al guardar transacción', 'error');
+    else showToast('Transacción guardada correctamente');
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    const { error } = await deleteTransaction(id);
+    if (error) showToast('Error al eliminar transacción', 'error');
+    else showToast('Transacción eliminada');
+  };
+
+  const handleAddGoal = async (goal) => {
+    const { error } = await addGoal(goal);
+    if (error) showToast('Error al guardar meta', 'error');
+    else showToast('Meta guardada correctamente');
+  };
+
+  const handleUpdateGoal = async (id, amount) => {
+    const { error } = await updateGoal(id, amount);
+    if (error) showToast('Error al actualizar meta', 'error');
+    else showToast('Meta actualizada correctamente');
+  };
+
+  const handleContributeGoal = async (id, amount) => {
+    const { error } = await addGoalContribution(id, amount);
+    if (error) showToast('Error al agregar ahorro', 'error');
+    else {
+      const newBalance = stats.balance - parseFloat(amount);
+      showToast(`Ahorro agregado correctamente. Balance actual: $${newBalance.toFixed(2)}`);
+    }
+  };
+
+  const handleDeleteGoal = async (id) => {
+    const { error } = await deleteGoal(id);
+    if (error) showToast('Error al eliminar meta', 'error');
+    else showToast('Meta eliminada');
+  };
+
+  const handleAddSubscription = async (sub) => {
+    const { error } = await addSubscription(sub);
+    if (error) showToast('Error al guardar suscripción', 'error');
+    else showToast('Suscripción guardada correctamente');
+  };
+
+  const handleDeleteSubscription = async (id) => {
+    const { error } = await deleteSubscription(id);
+    if (error) showToast('Error al eliminar suscripción', 'error');
+    else showToast('Suscripción eliminada');
+  };
 
   // Calculate notification count
   const notificationCount = subscriptions.filter(sub => getDaysRemaining(sub.dueDay) <= 5).length;
@@ -125,24 +185,46 @@ function App() {
         <Dashboard 
           stats={stats} 
           transactions={transactions} 
-          onDelete={deleteTransaction} 
+          onDelete={handleDeleteTransaction} 
         />
       );
     } else if (activeTab === 'goals') {
       content = (
         <Goals 
           goals={goals} 
-          onAdd={addGoal} 
-          onUpdate={updateGoal} 
-          onDelete={deleteGoal} 
+          onAdd={handleAddGoal} 
+          onContribute={handleContributeGoal} 
+          onDelete={handleDeleteGoal} 
         />
       );
     } else {
       content = (
         <Subscriptions 
           subscriptions={subscriptions} 
-          onAdd={addSubscription} 
-          onDelete={deleteSubscription} 
+          onAdd={handleAddSubscription} 
+          onDelete={handleDeleteSubscription}
+          onPay={(sub) => {
+            setConfirmModal({
+              isOpen: true,
+              title: 'Registrar Pago',
+              message: `¿Confirmas que deseas registrar el pago de ${sub.name} por $${sub.amount}? Se creará un gasto automáticamente.`,
+              confirmText: 'Registrar Pago',
+              onConfirm: async () => {
+                const { error } = await addTransaction({
+                  description: `Pago suscripción: ${sub.name}`,
+                  amount: sub.amount,
+                  type: 'expense',
+                  category: 'Servicios',
+                  date: new Date().toISOString()
+                });
+                if (error) showToast('Error al registrar pago', 'error');
+                else {
+                  const newBalance = stats.balance - parseFloat(sub.amount);
+                  showToast(`Pago registrado correctamente. Balance actual: $${newBalance.toFixed(2)}`);
+                }
+              }
+            });
+          }}
         />
       );
     }
@@ -187,12 +269,6 @@ function App() {
                     <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-neutral-900 animate-pulse" />
                   )}
                 </button>
-                {showNotifications && (
-                  <Notifications 
-                    subscriptions={subscriptions} 
-                    onClose={() => setShowNotifications(false)} 
-                  />
-                )}
               </div>
 
               <button
@@ -262,12 +338,36 @@ function App() {
             </div>
             <div className="p-6">
               <TransactionForm onAdd={(t) => {
-                addTransaction(t);
+                handleAddTransaction(t);
                 setIsTransactionModalOpen(false);
               }} />
             </div>
           </div>
         </div>
+      )}
+
+      {/* Global Components */}
+      {showNotifications && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}>
+          <Notifications subscriptions={subscriptions} onClose={() => setShowNotifications(false)} />
+        </div>
+      )}
+
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        onConfirm={confirmModal.onConfirm}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
       )}
     </div>
   );
