@@ -99,7 +99,8 @@ export function useFinance() {
 
   const fetchData = async (userId) => {
     try {
-      if (!dataLoadedRef.current) setLoading(true);, { data: expectedIncome } ] = await Promise.all([
+      if (!dataLoadedRef.current) setLoading(true);
+      const [ { data: transactions }, { data: goals }, { data: subscriptions }, { data: debts }, { data: expectedIncome } ] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('goals').select('*').eq('user_id', userId),
         supabase.from('subscriptions').select('*').eq('user_id', userId),
@@ -122,8 +123,7 @@ export function useFinance() {
           lastPaymentDate: s.last_payment_date
         })),
         debts: debts || [],
-        expectedIncome: expectedIncome
-        debts: debts || []
+        expectedIncome: expectedIncome || []
       });
       dataLoadedRef.current = true;
     } catch (error) {
@@ -387,7 +387,9 @@ export function useFinance() {
 
   const addDebt = async (debt) => {
     const newDebt = {
-      ...debt,,
+      ...debt,
+      id: crypto.randomUUID(),
+      amount: parseFloat(debt.amount),
       date: debt.date || new Date().toISOString().split('T')[0]
     };
 
@@ -402,9 +404,7 @@ export function useFinance() {
         id: newDebt.id,
         name: newDebt.name,
         amount: newDebt.amount,
-        date: newDebt.date
-        name: newDebt.name,
-        amount: newDebt.amount,
+        date: newDebt.date,
         user_id: user.id
       }]);
 
@@ -469,7 +469,11 @@ export function useFinance() {
         setData(previousData);
         return { error };
       }
-    }addExpectedIncome = async (income) => {
+    }
+    return { error: null };
+  };
+
+  const addExpectedIncome = async (income) => {
     const newIncome = {
       ...income,
       id: crypto.randomUUID(),
@@ -502,28 +506,21 @@ export function useFinance() {
   };
 
   const deleteExpectedIncome = async (id) => {
-    expectedIncome: data.expectedIncome,
-    addTransaction,
-    deleteTransaction,
-    addGoal,
-    updateGoal,
-    addGoalContribution,
-    deleteGoal,
-    addSubscription,
-    updateSubscription,
-    deleteSubscription,
-    addDebt,
-    payDebt,
-    deleteDebt,
-    addExpectedIncome,
-    deleteExpectedIncomea(previousData);
+    const previousData = { ...data };
+    setData(prev => ({
+      ...prev,
+      expectedIncome: prev.expectedIncome.filter(i => i.id !== id)
+    }));
+
+    if (user && supabase) {
+      const { error } = await supabase.from('expected_income').delete().eq('id', id);
+
+      if (error) {
+        console.error('Error deleting expected income:', error);
+        setData(previousData);
         return { error };
       }
     }
-    return { error: null };
-  };
-
-  const 
     return { error: null };
   };
 
@@ -560,6 +557,7 @@ export function useFinance() {
     goals: data.goals,
     subscriptions: data.subscriptions,
     debts: data.debts,
+    expectedIncome: data.expectedIncome,
     addTransaction,
     deleteTransaction,
     addGoal,
@@ -572,6 +570,8 @@ export function useFinance() {
     addDebt,
     payDebt,
     deleteDebt,
+    addExpectedIncome,
+    deleteExpectedIncome,
     stats: {
       balance: getBalance(),
       income: getIncome(),

@@ -23,7 +23,7 @@ export function ExpectedIncome({ income, onAdd, onDelete }) {
 
   return (
     <div className="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-50 dark:border-neutral-800">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
             <div className="p-2 md:p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-emerald-500 dark:text-emerald-400">
@@ -35,18 +35,18 @@ export function ExpectedIncome({ income, onAdd, onDelete }) {
             Total esperado ({selectedMonth}): <span className="text-emerald-500 font-bold">${totalIncome.toFixed(2)}</span>
           </p>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          <div className="relative w-full sm:w-auto">
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full md:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 font-medium"
+              className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 font-medium"
             />
           </div>
           <button
             onClick={() => setIsAdding(!isAdding)}
-            className="w-full md:w-auto text-sm bg-slate-900 dark:bg-neutral-800 text-white px-5 py-3 rounded-2xl hover:bg-slate-800 dark:hover:bg-neutral-700 font-medium transition-all shadow-lg shadow-slate-200 dark:shadow-none hover:shadow-xl hover:shadow-slate-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto text-sm bg-slate-900 dark:bg-neutral-800 text-white px-5 py-3 rounded-2xl hover:bg-slate-800 dark:hover:bg-neutral-700 font-medium transition-all shadow-lg shadow-slate-200 dark:shadow-none hover:shadow-xl hover:shadow-slate-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
           >
             {isAdding ? 'Cancelar' : <><Plus size={18} /> Nuevo Ingreso</>}
           </button>

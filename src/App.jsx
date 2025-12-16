@@ -58,6 +58,7 @@ function App() {
     transactions, 
     goals,
     subscriptions,
+    debts,
     expectedIncome,
     addTransaction, 
     deleteTransaction, 
@@ -72,8 +73,7 @@ function App() {
     payDebt,
     deleteDebt,
     addExpectedIncome,
-    deleteExpectedIncome
-    deleteDebt,
+    deleteExpectedIncome,
     stats 
   } = useFinance();
 
@@ -160,6 +160,9 @@ function App() {
   const handleDeleteDebt = async (id) => {
     const { error } = await deleteDebt(id);
     if (error) showToast('Error al eliminar deuda', 'error');
+    else showToast('Deuda eliminada');
+  };
+
   const handleAddExpectedIncome = async (income) => {
     const { error } = await addExpectedIncome(income);
     if (error) showToast('Error al guardar ingreso esperado', 'error');
@@ -170,9 +173,6 @@ function App() {
     const { error } = await deleteExpectedIncome(id);
     if (error) showToast('Error al eliminar ingreso esperado', 'error');
     else showToast('Ingreso esperado eliminado');
-  };
-
-    else showToast('Deuda eliminada');
   };
 
   // Calculate notification count
@@ -227,6 +227,9 @@ function App() {
         <Dashboard 
           stats={stats} 
           transactions={transactions} 
+          goals={goals}
+          debts={debts}
+          expectedIncome={expectedIncome}
           onDelete={handleDeleteTransaction} 
         />
       );
