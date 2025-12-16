@@ -7,6 +7,7 @@ export function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
 
@@ -70,6 +71,16 @@ export function Auth() {
           password,
         });
         if (error) throw error;
+
+        // Handle session duration
+        if (!rememberMe) {
+          // Set expiry to 24 hours from now
+          const expiryTime = Date.now() + 24 * 60 * 60 * 1000;
+          localStorage.setItem('session_expiry', expiryTime.toString());
+        } else {
+          // Clear any existing expiry for "Remember Me"
+          localStorage.removeItem('session_expiry');
+        }
       }
     } catch (error) {
       setError(error.message);
@@ -111,6 +122,21 @@ export function Auth() {
               required
             />
           </div>
+
+          {!isSignUp && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <label htmlFor="rememberMe" className="text-sm text-slate-600 dark:text-neutral-400 cursor-pointer select-none">
+                Recuérdame
+              </label>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-xl text-sm flex items-center gap-2">
