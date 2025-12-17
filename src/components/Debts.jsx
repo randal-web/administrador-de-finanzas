@@ -17,6 +17,13 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
     setIsAdding(false);
   };
 
+  const handlePay = (id) => {
+    if (!payAmount) return;
+    onPay(id, payAmount);
+    setPayingId(null);
+    setPayAmount('');
+  };
+
   const filteredDebts = debts.filter(debt => {
     if (showAll) return true;
     if (!debt.date) return true; // Show debts without date (legacy)

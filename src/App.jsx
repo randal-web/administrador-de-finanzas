@@ -13,6 +13,7 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { Toast } from './components/Toast';
 import { supabase } from './lib/supabase';
 import { getDaysRemaining } from './lib/utils';
+import packageJson from '../package.json';
 
 const NavSwitch = ({ activeTab, setActiveTab }) => {
   const tabs = [
@@ -407,7 +408,7 @@ function App() {
 
       <footer className="py-6 text-center">
         <p className="text-xs font-medium text-slate-400 dark:text-neutral-600">
-          Administrador de Finanzas v1.1.1
+          Administrador de Finanzas v{packageJson.version}
         </p>
       </footer>
 
