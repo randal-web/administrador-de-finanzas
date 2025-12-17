@@ -34,6 +34,9 @@ export function useFinance() {
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) {
         console.error('Error checking session:', error);
+        // If the session is invalid (e.g. invalid refresh token), sign out to clear it
+        supabase.auth.signOut();
+        setUser(null);
         setLoading(false);
         return;
       }

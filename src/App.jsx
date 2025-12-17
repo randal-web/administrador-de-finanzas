@@ -401,7 +401,7 @@ function App() {
 
       <footer className="py-6 text-center">
         <p className="text-xs font-medium text-slate-400 dark:text-neutral-600">
-          Administrador de Finanzas v1.0.0
+          Administrador de Finanzas v1.0.1
         </p>
       </footer>
 
