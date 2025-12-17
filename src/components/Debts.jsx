@@ -3,6 +3,7 @@ import { CreditCard, Plus, Trash2, DollarSign, TrendingDown, Calendar } from 'lu
 
 export function Debts({ debts, onAdd, onPay, onDelete }) {
   const [isAdding, setIsAdding] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [newDebt, setNewDebt] = useState({ name: '', amount: '', date: new Date().toISOString().slice(0, 10) });
   const [payingId, setPayingId] = useState(null);
@@ -17,6 +18,7 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
   };
 
   const filteredDebts = debts.filter(debt => {
+    if (showAll) return true;
     if (!debt.date) return true; // Show debts without date (legacy)
     return debt.date.startsWith(selectedMonth);
   });
@@ -34,18 +36,31 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
             Control de Deudas
           </h2>
           <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium mt-2 ml-1">
-            Total acumulado ({selectedMonth}): <span className="text-rose-500 font-bold">${totalDebt.toFixed(2)}</span>
+            Total acumulado ({showAll ? 'Histórico' : selectedMonth}): <span className="text-rose-500 font-bold">${totalDebt.toFixed(2)}</span>
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:w-auto">
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 font-medium"
-            />
-          </div>
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className={`w-full sm:w-auto px-4 py-3 rounded-2xl font-medium transition-all ${
+              showAll 
+                ? 'bg-rose-500 text-white shadow-lg shadow-rose-200 dark:shadow-rose-900/20' 
+                : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
+            }`}
+          >
+            {showAll ? 'Viendo todas' : 'Ver todas'}
+          </button>
+
+          {!showAll && (
+            <div className="relative w-full sm:w-auto">
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 font-medium"
+              />
+            </div>
+          )}
           <button
             onClick={() => setIsAdding(!isAdding)}
             className="w-full sm:w-auto text-sm bg-slate-900 dark:bg-neutral-800 text-white px-5 py-3 rounded-2xl hover:bg-slate-800 dark:hover:bg-neutral-700 font-medium transition-all shadow-lg shadow-slate-200 dark:shadow-none hover:shadow-xl hover:shadow-slate-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
