@@ -103,12 +103,13 @@ export function useFinance() {
   const fetchData = async (userId) => {
     try {
       if (!dataLoadedRef.current) setLoading(true);
-      const [ { data: transactions }, { data: goals }, { data: subscriptions }, { data: debts }, { data: expectedIncome } ] = await Promise.all([
+      const [ { data: transactions }, { data: goals }, { data: subscriptions }, { data: debts }, { data: expectedIncome }, { data: subscriptionPayments } ] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('goals').select('*').eq('user_id', userId),
         supabase.from('subscriptions').select('*').eq('user_id', userId),
         supabase.from('debts').select('*').eq('user_id', userId),
-        supabase.from('expected_income').select('*').eq('user_id', userId)
+        supabase.from('expected_income').select('*').eq('user_id', userId),
+        supabase.from('subscription_payments').select('*').eq('user_id', userId).order('payment_date', { ascending: false })
       ]);
 
       setData({
@@ -123,7 +124,14 @@ export function useFinance() {
           dueDay: s.due_day,
           frequency: s.frequency || 'monthly',
           date: s.due_date,
-          lastPaymentDate: s.last_payment_date
+          lastPaymentDate: s.last_payment_date,
+          payments: (subscriptionPayments || [])
+            .filter(p => p.subscription_id === s.id)
+            .map(p => ({
+              id: p.id,
+              amount: p.amount,
+              date: p.payment_date
+            }))
         })),
         debts: debts || [],
         expectedIncome: expectedIncome || []
@@ -388,6 +396,62 @@ export function useFinance() {
     return { error: null };
   };
 
+  const paySubscription = async (id, amount, date) => {
+    const paymentDate = date || new Date().toISOString();
+    const numAmount = parseFloat(amount);
+    
+    const previousData = { ...data };
+    
+    // Optimistic update
+    setData(prev => ({
+      ...prev,
+      subscriptions: prev.subscriptions.map(s => {
+        if (s.id === id) {
+          return {
+            ...s,
+            lastPaymentDate: paymentDate,
+            payments: [
+              { id: 'temp-' + Date.now(), amount: numAmount, date: paymentDate },
+              ...(s.payments || [])
+            ]
+          };
+        }
+        return s;
+      })
+    }));
+
+    if (user && supabase) {
+      // 1. Insert payment record
+      const { error: paymentError } = await supabase
+        .from('subscription_payments')
+        .insert([{
+          subscription_id: id,
+          user_id: user.id,
+          amount: numAmount,
+          payment_date: paymentDate
+        }]);
+
+      if (paymentError) {
+        console.error('Error adding subscription payment:', paymentError);
+        setData(previousData);
+        return { error: paymentError };
+      }
+
+      // 2. Update subscription last_payment_date
+      const { error: subError } = await supabase
+        .from('subscriptions')
+        .update({ last_payment_date: paymentDate })
+        .eq('id', id);
+
+      if (subError) {
+        console.error('Error updating subscription last payment:', subError);
+        setData(previousData);
+        return { error: subError };
+      }
+    }
+    return { error: null };
+  };
+
   const addDebt = async (debt) => {
     const newDebt = {
       ...debt,
@@ -570,6 +634,7 @@ export function useFinance() {
     addSubscription,
     updateSubscription,
     deleteSubscription,
+    paySubscription,
     addDebt,
     payDebt,
     deleteDebt,

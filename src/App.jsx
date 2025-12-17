@@ -69,6 +69,7 @@ function App() {
     addSubscription,
     updateSubscription,
     deleteSubscription,
+    paySubscription,
     addDebt,
     payDebt,
     deleteDebt,
@@ -272,21 +273,26 @@ function App() {
               message: `¿Confirmas que deseas registrar el pago de ${sub.name} por $${sub.amount}? Se creará un gasto automáticamente.`,
               confirmText: 'Registrar Pago',
               onConfirm: async () => {
-                const { error } = await addTransaction({
+                // 1. Create the expense transaction
+                const { error: txError } = await addTransaction({
                   description: `Pago suscripción: ${sub.name}`,
                   amount: sub.amount,
                   type: 'expense',
                   category: 'Servicios',
                   date: new Date().toISOString()
                 });
-                if (error) showToast('Error al registrar pago', 'error');
-                else {
-                  if (sub.frequency === 'one-time') {
-                    await updateSubscription(sub.id, { status: 'paid' });
-                  } else {
-                    // For monthly/yearly, update the last payment date
-                    await updateSubscription(sub.id, { lastPaymentDate: new Date().toISOString() });
-                  }
+
+                if (txError) {
+                  showToast('Error al registrar transacción', 'error');
+                  return;
+                }
+
+                // 2. Record the subscription payment
+                const { error: subError } = await paySubscription(sub.id, sub.amount);
+                
+                if (subError) {
+                  showToast('Error al actualizar suscripción', 'error');
+                } else {
                   const newBalance = stats.balance - parseFloat(sub.amount);
                   showToast(`Pago registrado correctamente. Balance actual: $${newBalance.toFixed(2)}`);
                 }
@@ -401,7 +407,7 @@ function App() {
 
       <footer className="py-6 text-center">
         <p className="text-xs font-medium text-slate-400 dark:text-neutral-600">
-          Administrador de Finanzas v1.0.1
+          Administrador de Finanzas v1.1.1
         </p>
       </footer>
 

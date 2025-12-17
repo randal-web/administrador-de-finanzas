@@ -52,33 +52,33 @@ serve(async (req) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0) // Normalize to start of day for accurate comparison
 
-    // 3. Iterar y buscar pagos próximos (3 días antes)
+    // 3. Iterar y buscar pagos próximos o vencidos
     for (const sub of subscriptions || []) {
       // Obtener email del usuario
       const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(sub.user_id)
       
       if (userError || !user || !user.email) continue
 
-      // --- Start of new date logic ---
-      let nextDueDate = new Date(today.getFullYear(), today.getMonth(), sub.due_day);
-      nextDueDate.setHours(0, 0, 0, 0);
+      const dueDay = sub.due_day || 1;
+      const currentMonthDueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+      currentMonthDueDate.setHours(0, 0, 0, 0);
 
-      // If the due date in the current month has already passed, set it to next month
-      if (nextDueDate < today) {
-        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      let isPaidThisMonth = false;
+      if (sub.last_payment_date) {
+        const lastPayment = new Date(sub.last_payment_date);
+        // Check if paid for the current month/cycle
+        isPaidThisMonth = lastPayment.getMonth() === today.getMonth() && lastPayment.getFullYear() === today.getFullYear();
       }
-      
-      // Calculate the difference in whole days
-      const timeDiff = nextDueDate.getTime() - today.getTime();
-      const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-      // --- End of new date logic ---
 
-      // Si faltan 3 días o menos (y no es negativo/ya pasó)
-      if (daysRemaining <= 3 && daysRemaining >= 0) {
+      // Case 1: Overdue (Date passed AND not paid)
+      if (currentMonthDueDate < today && !isPaidThisMonth) {
+        const diffTime = today.getTime() - currentMonthDueDate.getTime();
+        const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
         emailsToSend.push({
           from: 'Finanzas App <alertas@notifications.globalmanager.online>',
           to: user.email,
-          subject: `🔔 Recordatorio: ${sub.name} vence pronto`,
+          subject: `⚠️ URGENTE: Pago Vencido - ${sub.name}`,
           headers: {
             'X-Priority': '1',
             'X-MSMail-Priority': 'High',
@@ -86,47 +86,97 @@ serve(async (req) => {
           },
           html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
-              <div style="background-color: #0f172a; padding: 20px; text-align: center;">
-                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Recordatorio de Pago</h1>
+              <div style="background-color: #ef4444; padding: 20px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Pago Vencido</h1>
               </div>
               
               <div style="padding: 30px; color: #334155;">
                 <p style="font-size: 16px; margin-bottom: 20px;">Hola,</p>
                 
                 <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">
-                  Este es un recordatorio amigable de que tienes un pago programado que vence pronto.
+                  Tu pago para <strong>${sub.name}</strong> ha vencido hace <strong>${daysOverdue} días</strong>.
                 </p>
                 
-                <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
-                  <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                      <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Servicio</td>
-                      <td style="padding: 8px 0; color: #0f172a; font-weight: bold; text-align: right; font-size: 16px;">${sub.name}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Monto</td>
-                      <td style="padding: 8px 0; color: #0f172a; font-weight: bold; text-align: right; font-size: 16px;">$${sub.amount}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Vencimiento</td>
-                      <td style="padding: 8px 0; color: #ef4444; font-weight: bold; text-align: right; font-size: 16px;">
-                        ${daysRemaining === 0 ? '¡Vence HOY!' : `En ${daysRemaining} día(s)`}
-                      </td>
-                    </tr>
-                  </table>
+                <div style="background-color: #fef2f2; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #fee2e2;">
+                  <p style="margin: 0; font-size: 18px; font-weight: bold; color: #991b1b; text-align: center;">
+                    Monto Pendiente: $${sub.amount}
+                  </p>
+                  <p style="margin: 10px 0 0; font-size: 14px; color: #b91c1c; text-align: center;">
+                    Fecha límite era: ${currentMonthDueDate.toLocaleDateString('es-ES')}
+                  </p>
                 </div>
 
-                <p style="font-size: 14px; color: #64748b; text-align: center; margin-top: 30px;">
-                  Mantén tus finanzas bajo control con tu Administrador de Finanzas.
+                <p style="font-size: 14px; color: #64748b; margin-top: 30px; text-align: center;">
+                  Por favor, registra tu pago en la aplicación lo antes posible.
                 </p>
               </div>
               
-              <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #94a3b8;">
-                <p style="margin: 0;">Este es un mensaje automático, por favor no responder.</p>
+              <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                  Mantén tus finanzas bajo control con tu Administrador de Finanzas.
+                </p>
               </div>
             </div>
           `
-        })
+        });
+        continue; // Skip upcoming check if overdue
+      }
+
+      // Case 2: Upcoming (Only if not paid yet)
+      if (!isPaidThisMonth && currentMonthDueDate >= today) {
+        const timeDiff = currentMonthDueDate.getTime() - today.getTime();
+        const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+
+        // Si faltan 3 días o menos
+        if (daysRemaining <= 3 && daysRemaining >= 0) {
+          emailsToSend.push({
+            from: 'Finanzas App <alertas@notifications.globalmanager.online>',
+            to: user.email,
+            subject: `🔔 Recordatorio: ${sub.name} vence pronto`,
+            headers: {
+              'X-Priority': '1',
+              'X-MSMail-Priority': 'High',
+              'Importance': 'High'
+            },
+            html: `
+              <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Recordatorio de Pago</h1>
+                </div>
+                
+                <div style="padding: 30px; color: #334155;">
+                  <p style="font-size: 16px; margin-bottom: 20px;">Hola,</p>
+                  
+                  <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">
+                    Este es un recordatorio amigable de que tienes un pago programado que vence pronto.
+                  </p>
+                  
+                  <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+                    <p style="margin: 0; font-size: 18px; font-weight: bold; color: #0f172a; text-align: center;">
+                      ${sub.name}
+                    </p>
+                    <p style="margin: 10px 0 0; font-size: 24px; font-weight: bold; color: #2563eb; text-align: center;">
+                      $${sub.amount}
+                    </p>
+                    <p style="margin: 10px 0 0; font-size: 14px; color: #64748b; text-align: center;">
+                      Vence el: ${currentMonthDueDate.toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
+
+                  <p style="font-size: 14px; color: #64748b; margin-top: 30px; text-align: center;">
+                    Si ya realizaste este pago, por favor regístralo en la aplicación.
+                  </p>
+                </div>
+                
+                <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                    Mantén tus finanzas bajo control con tu Administrador de Finanzas.
+                  </p>
+                </div>
+              </div>
+            `
+          });
+        }
       }
     }
 

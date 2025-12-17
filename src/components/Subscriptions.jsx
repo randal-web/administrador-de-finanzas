@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Calendar, Plus, Trash2, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Calendar, Plus, Trash2, AlertCircle, CheckCircle2, Clock, X, History } from 'lucide-react';
 
 export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedSub, setSelectedSub] = useState(null);
   const [newSub, setNewSub] = useState({ 
     name: '', 
     amount: '', 
@@ -27,9 +28,25 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
     setIsAdding(false);
   };
 
+  const isPaidCurrentCycle = (sub) => {
+    if (!sub.lastPaymentDate) return false;
+    
+    const lastPayment = new Date(sub.lastPaymentDate);
+    const today = new Date();
+    
+    if (sub.frequency === 'monthly' || !sub.frequency) {
+      return lastPayment.getMonth() === today.getMonth() && 
+             lastPayment.getFullYear() === today.getFullYear();
+    } else if (sub.frequency === 'yearly') {
+      return lastPayment.getFullYear() === today.getFullYear();
+    }
+    return false;
+  };
+
   const getDaysRemaining = (sub) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const isPaid = isPaidCurrentCycle(sub);
     
     if (sub.frequency === 'monthly' || !sub.frequency) {
       const dueDay = parseInt(sub.dueDay);
@@ -38,6 +55,13 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
       if (dueDay >= currentDay) {
         return dueDay - currentDay;
       } else {
+        // If the due date has passed for this month
+        if (!isPaid) {
+          // If not paid, it's OVERDUE. Return negative days.
+          // e.g. Due 15th, Today 16th. 15 - 16 = -1 (1 day overdue)
+          return dueDay - currentDay;
+        }
+        // If paid, show next month's due date (reset on 1st of month logic handled naturally by currentDay being 1)
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
         return (daysInMonth - currentDay) + dueDay;
       }
@@ -64,30 +88,17 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
   };
 
   const getStatusColor = (daysRemaining) => {
+    if (daysRemaining < 0) return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30';
     if (daysRemaining <= 3) return 'text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20';
     if (daysRemaining <= 7) return 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20';
     return 'text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20';
   };
 
   const getStatusText = (daysRemaining) => {
+    if (daysRemaining < 0) return `Vencido hace ${Math.abs(daysRemaining)} días`;
     if (daysRemaining === 0) return 'Vence hoy';
     if (daysRemaining === 1) return 'Vence mañana';
     return `Vence en ${daysRemaining} días`;
-  };
-
-  const isPaidCurrentCycle = (sub) => {
-    if (!sub.lastPaymentDate) return false;
-    
-    const lastPayment = new Date(sub.lastPaymentDate);
-    const today = new Date();
-    
-    if (sub.frequency === 'monthly' || !sub.frequency) {
-      return lastPayment.getMonth() === today.getMonth() && 
-             lastPayment.getFullYear() === today.getFullYear();
-    } else if (sub.frequency === 'yearly') {
-      return lastPayment.getFullYear() === today.getFullYear();
-    }
-    return false;
   };
 
   // Sort subscriptions by days remaining
@@ -199,7 +210,11 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
             }
             
             return (
-              <div key={sub.id} className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden">
+              <div 
+                key={sub.id} 
+                onClick={() => setSelectedSub(sub)}
+                className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden cursor-pointer"
+              >
                 {isPaid && sub.frequency !== 'one-time' && (
                   <div className="absolute top-0 left-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-10">
                     {sub.frequency === 'monthly' ? 'PAGADO ESTE MES' : 'PAGADO ESTE AÑO'}
@@ -207,7 +222,10 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                 )}
                 
                 <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                   <button onClick={() => onDelete(sub.id)} className="text-slate-300 dark:text-neutral-600 hover:text-rose-400 dark:hover:text-rose-400 transition-colors bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                   <button 
+                    onClick={(e) => { e.stopPropagation(); onDelete(sub.id); }} 
+                    className="text-slate-300 dark:text-neutral-600 hover:text-rose-400 dark:hover:text-rose-400 transition-colors bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                   >
                     <Trash2 size={18} />
                   </button>
                 </div>
@@ -236,7 +254,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                   </button>
                 ) : (
                   <button 
-                    onClick={() => onPay && onPay(sub)}
+                    onClick={(e) => { e.stopPropagation(); onPay && onPay(sub); }}
                     className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium text-sm transition-all flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 size={16} /> Registrar Pago
@@ -247,6 +265,71 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
           })
         )}
       </div>
+
+      {/* History Modal */}
+      {selectedSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/20 dark:bg-black/50 backdrop-blur-sm transition-all duration-300" onClick={() => setSelectedSub(null)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-white/50 dark:border-neutral-800 animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 border-b border-slate-50 dark:border-neutral-800">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white">{selectedSub.name}</h3>
+              <button onClick={() => setSelectedSub(null)} className="p-2 hover:bg-slate-50 dark:hover:bg-neutral-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-neutral-200 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Details */}
+              <div className="flex justify-between items-center bg-slate-50 dark:bg-neutral-800/50 p-4 rounded-2xl">
+                <div>
+                  <p className="text-sm text-slate-400 dark:text-neutral-500">Monto</p>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-white">${selectedSub.amount.toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-slate-400 dark:text-neutral-500">Frecuencia</p>
+                  <p className="font-medium text-slate-800 dark:text-white capitalize">
+                    {selectedSub.frequency === 'monthly' ? 'Mensual' : selectedSub.frequency === 'yearly' ? 'Anual' : 'Único'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              {!isPaidCurrentCycle(selectedSub) && selectedSub.status !== 'paid' && (
+                <button 
+                  onClick={() => {
+                    onPay && onPay(selectedSub);
+                    setSelectedSub(null);
+                  }}
+                  className="w-full py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={18} /> Cerrar Pago (Registrar)
+                </button>
+              )}
+
+              {/* History */}
+              <div>
+                <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                  <History size={18} className="text-slate-400" /> Historial de Pagos
+                </h4>
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                  {selectedSub.payments && selectedSub.payments.length > 0 ? (
+                    selectedSub.payments.map(payment => (
+                      <div key={payment.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-neutral-800/50 rounded-xl border border-slate-100 dark:border-neutral-800">
+                        <span className="text-sm font-medium text-slate-600 dark:text-neutral-300">
+                          {new Date(payment.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          ${payment.amount.toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-400 dark:text-neutral-500 text-center py-4">No hay pagos registrados</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
