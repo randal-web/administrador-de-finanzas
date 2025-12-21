@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { PlusCircle, CheckCircle2 } from 'lucide-react';
 
-export function TransactionForm({ onAdd }) {
+export function TransactionForm({ onAdd, debts = [] }) {
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedDebtId, setSelectedDebtId] = useState('');
 
   const handleTypeChange = (newType) => {
     setType(newType);
     setCategory('');
+    setSelectedDebtId('');
   };
 
   const handleSubmit = (e) => {
@@ -21,12 +23,14 @@ export function TransactionForm({ onAdd }) {
       amount: parseFloat(amount),
       category,
       description,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      debtId: selectedDebtId || null
     });
 
     setAmount('');
     setCategory('');
     setDescription('');
+    setSelectedDebtId('');
   };
 
   return (
@@ -124,6 +128,32 @@ export function TransactionForm({ onAdd }) {
             placeholder="Detalles opcionales..."
           />
         </div>
+
+        {type === 'expense' && debts.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Sumar a Deuda (Opcional)</label>
+            <div className="relative">
+              <select
+                value={selectedDebtId}
+                onChange={(e) => setSelectedDebtId(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-neutral-800 border border-transparent rounded-2xl focus:bg-white dark:focus:bg-neutral-900 focus:border-slate-200 dark:focus:border-neutral-700 focus:ring-4 focus:ring-slate-100 dark:focus:ring-neutral-800 transition-all outline-none font-medium text-slate-800 dark:text-white appearance-none cursor-pointer"
+              >
+                <option value="">Ninguna (Gasto normal)</option>
+                {debts.map(debt => (
+                  <option key={debt.id} value={debt.id}>
+                    {debt.name} (Actual: ${debt.amount.toFixed(2)})
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-neutral-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 dark:text-neutral-500 mt-1 ml-1">
+              Si seleccionas una deuda, el monto se sumará a lo que debes.
+            </p>
+          </div>
+        )}
       </div>
 
       <button

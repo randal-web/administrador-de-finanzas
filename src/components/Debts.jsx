@@ -5,7 +5,7 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
   const [isAdding, setIsAdding] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [newDebt, setNewDebt] = useState({ name: '', amount: '', date: new Date().toISOString().slice(0, 10) });
+  const [newDebt, setNewDebt] = useState({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), type: 'personal' });
   const [payingId, setPayingId] = useState(null);
   const [payAmount, setPayAmount] = useState('');
 
@@ -13,7 +13,7 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
     e.preventDefault();
     if (!newDebt.name || !newDebt.amount) return;
     onAdd(newDebt);
-    setNewDebt({ name: '', amount: '', date: new Date().toISOString().slice(0, 10) });
+    setNewDebt({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), type: 'personal' });
     setIsAdding(false);
   };
 
@@ -79,7 +79,7 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
 
       {isAdding && (
         <form onSubmit={handleSubmit} className="mb-8 p-6 bg-slate-50 dark:bg-neutral-800/50 rounded-3xl border border-slate-100 dark:border-neutral-700 animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <input
               type="text"
               placeholder="Nombre (ej. Tarjeta Visa, Préstamo)"
@@ -88,6 +88,14 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
               className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
               required
             />
+            <select
+              value={newDebt.type}
+              onChange={e => setNewDebt({...newDebt, type: e.target.value})}
+              className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white cursor-pointer"
+            >
+              <option value="personal">Personal</option>
+              <option value="credit-card">Tarjeta de Crédito</option>
+            </select>
             <input
               type="number"
               placeholder="Monto adeudado"
@@ -128,7 +136,16 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
               </div>
 
               <div className="mb-4">
-                <h3 className="font-bold text-slate-800 dark:text-white text-lg">{debt.name}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-slate-800 dark:text-white text-lg">{debt.name}</h3>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    debt.type === 'credit-card' 
+                      ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' 
+                      : 'bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-400'
+                  }`}>
+                    {debt.type === 'credit-card' ? 'Tarjeta' : 'Personal'}
+                  </span>
+                </div>
                 <p className="text-2xl font-bold text-rose-500 mt-2">${debt.amount.toFixed(2)}</p>
                 {debt.date && <p className="text-xs text-slate-400 mt-1">{new Date(debt.date).toLocaleDateString()}</p>}
               </div>

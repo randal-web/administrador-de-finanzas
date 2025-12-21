@@ -73,6 +73,7 @@ function App() {
     paySubscription,
     addDebt,
     payDebt,
+    increaseDebt,
     deleteDebt,
     addExpectedIncome,
     deleteExpectedIncome,
@@ -98,8 +99,21 @@ function App() {
 
   const handleAddTransaction = async (transaction) => {
     const { error } = await addTransaction(transaction);
-    if (error) showToast('Error al guardar transacción', 'error');
-    else showToast('Transacción guardada correctamente');
+    if (error) {
+      showToast('Error al guardar transacción', 'error');
+      return;
+    }
+
+    if (transaction.debtId) {
+      const { error: debtError } = await increaseDebt(transaction.debtId, transaction.amount);
+      if (debtError) {
+        showToast('Transacción guardada, pero error al actualizar deuda', 'warning');
+      } else {
+        showToast('Transacción guardada y deuda actualizada');
+      }
+    } else {
+      showToast('Transacción guardada correctamente');
+    }
   };
 
   const handleDeleteTransaction = async (id) => {
@@ -423,10 +437,13 @@ function App() {
               </button>
             </div>
             <div className="p-6">
-              <TransactionForm onAdd={(t) => {
-                handleAddTransaction(t);
-                setIsTransactionModalOpen(false);
-              }} />
+              <TransactionForm 
+                onAdd={(t) => {
+                  handleAddTransaction(t);
+                  setIsTransactionModalOpen(false);
+                }} 
+                debts={debts}
+              />
             </div>
           </div>
         </div>

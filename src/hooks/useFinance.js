@@ -167,6 +167,7 @@ export function useFinance() {
         type: newTransaction.type,
         category: newTransaction.category,
         date: newTransaction.date,
+        debt_id: transaction.debtId || null,
         user_id: user.id
       }]);
 
@@ -457,7 +458,8 @@ export function useFinance() {
       ...debt,
       id: crypto.randomUUID(),
       amount: parseFloat(debt.amount),
-      date: debt.date || new Date().toISOString().split('T')[0]
+      date: debt.date || new Date().toISOString().split('T')[0],
+      type: debt.type || 'personal'
     };
 
     const previousData = { ...data };
@@ -472,11 +474,40 @@ export function useFinance() {
         name: newDebt.name,
         amount: newDebt.amount,
         date: newDebt.date,
+        type: newDebt.type,
         user_id: user.id
       }]);
 
       if (error) {
         console.error('Error adding debt:', error);
+        setData(previousData);
+        return { error };
+      }
+    }
+    return { error: null };
+  };
+
+  const increaseDebt = async (id, amount) => {
+    const increaseAmount = parseFloat(amount);
+    const debt = data.debts.find(d => d.id === id);
+    if (!debt) return { error: 'Debt not found' };
+
+    const newAmount = debt.amount + increaseAmount;
+    const previousData = { ...data };
+
+    setData(prev => ({
+      ...prev,
+      debts: prev.debts.map(d => d.id === id ? { ...d, amount: newAmount } : d)
+    }));
+
+    if (user && supabase) {
+      const { error } = await supabase
+        .from('debts')
+        .update({ amount: newAmount })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error increasing debt:', error);
         setData(previousData);
         return { error };
       }
@@ -593,9 +624,19 @@ export function useFinance() {
 
   const getBalance = () => {
     return data.transactions.reduce((acc, curr) => {
-      return curr.type === 'income' 
-        ? acc + curr.amount 
-        : acc - curr.amount;
+      if (curr.type === 'income') {
+        return acc + curr.amount;
+      } else {
+        // If it's an expense linked to a credit card debt, don't subtract from balance
+        if (curr.debt_id || curr.debtId) {
+          const debtId = curr.debt_id || curr.debtId;
+          const linkedDebt = data.debts.find(d => d.id === debtId);
+          if (linkedDebt && linkedDebt.type === 'credit-card') {
+            return acc;
+          }
+        }
+        return acc - curr.amount;
+      }
     }, 0);
   };
 
@@ -637,6 +678,7 @@ export function useFinance() {
     paySubscription,
     addDebt,
     payDebt,
+    increaseDebt,
     deleteDebt,
     addExpectedIncome,
     deleteExpectedIncome,
