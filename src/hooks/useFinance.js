@@ -15,6 +15,7 @@ export function useFinance() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const dataLoadedRef = useRef(false);
+  const lastFetchedUserId = useRef(null);
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : initialData;
@@ -51,18 +52,22 @@ export function useFinance() {
         setUser(null);
         setLoading(false);
         dataLoadedRef.current = false;
+        lastFetchedUserId.current = null;
         return;
       }
 
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchData(session.user.id);
+        if (session.user.id !== lastFetchedUserId.current) {
+          fetchData(session.user.id);
+          lastFetchedUserId.current = session.user.id;
+        }
       } else {
         setLoading(false);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Check for session expiry on auth state change as well
       const expiry = localStorage.getItem('session_expiry');
       if (expiry && Date.now() > parseInt(expiry)) {
@@ -71,12 +76,17 @@ export function useFinance() {
         setUser(null);
         setLoading(false);
         dataLoadedRef.current = false;
+        lastFetchedUserId.current = null;
         return;
       }
 
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchData(session.user.id);
+        // Avoid refetching on token refresh or if user hasn't changed
+        if (event !== 'TOKEN_REFRESHED' && session.user.id !== lastFetchedUserId.current) {
+          fetchData(session.user.id);
+          lastFetchedUserId.current = session.user.id;
+        }
       } else {
         // Fallback to local storage if logged out
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -87,6 +97,7 @@ export function useFinance() {
         setData(parsed);
         setLoading(false);
         dataLoadedRef.current = false;
+        lastFetchedUserId.current = null;
       }
     });
 
