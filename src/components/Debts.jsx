@@ -95,6 +95,7 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
             >
               <option value="personal">Personal</option>
               <option value="credit-card">Tarjeta de Crédito</option>
+              <option value="loan">Préstamo</option>
             </select>
             <input
               type="number"
@@ -141,9 +142,11 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                     debt.type === 'credit-card' 
                       ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' 
+                      : debt.type === 'loan'
+                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                       : 'bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-400'
                   }`}>
-                    {debt.type === 'credit-card' ? 'Tarjeta' : 'Personal'}
+                    {debt.type === 'credit-card' ? 'Tarjeta' : debt.type === 'loan' ? 'Préstamo' : 'Personal'}
                   </span>
                 </div>
                 <p className="text-2xl font-bold text-rose-500 mt-2">${debt.amount.toFixed(2)}</p>
