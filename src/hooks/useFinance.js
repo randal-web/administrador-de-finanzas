@@ -529,8 +529,9 @@ export function useFinance() {
     return { error: null };
   };
 
-  const payDebt = async (id, amount) => {
+  const payDebt = async (id, amount, date) => {
     const paymentAmount = parseFloat(amount);
+    const paymentDate = date || new Date().toISOString();
     const debt = data.debts.find(d => d.id === id);
     if (!debt) return { error: 'Debt not found' };
 
@@ -560,7 +561,7 @@ export function useFinance() {
         amount: paymentAmount,
         type: 'expense',
         category: 'Deudas',
-        date: new Date().toISOString(),
+        date: paymentDate,
         debtId: id
       });
     }

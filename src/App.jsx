@@ -193,10 +193,23 @@ function App() {
     }
   };
 
-  const handlePayDebt = async (id, amount) => {
-    const { error } = await payDebt(id, amount);
+  const handlePayDebt = async (id, amount, date) => {
+    const { error } = await payDebt(id, amount, date);
     if (error) showToast('Error al registrar pago de deuda', 'error');
     else showToast('Pago de deuda registrado correctamente');
+  };
+
+  const handleScheduleDebtPayment = async (debt, date, amount) => {
+    const { error } = await addSubscription({
+      name: `Pago: ${debt.name}`,
+      amount: parseFloat(amount),
+      frequency: 'one-time',
+      date: date,
+      debtId: debt.id
+    });
+
+    if (error) showToast('Error al programar pago', 'error');
+    else showToast('Próximo pago programado correctamente');
   };
 
   const handleDeleteDebt = async (id) => {
@@ -291,7 +304,8 @@ function App() {
           debts={debts} 
           transactions={transactions}
           onAdd={handleAddDebt} 
-          onPay={handlePayDebt} 
+          onPay={handlePayDebt}
+          onSchedule={handleScheduleDebtPayment}
           onDelete={handleDeleteDebt} 
         />
       );

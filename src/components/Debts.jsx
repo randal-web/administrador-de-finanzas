@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import Flatpickr from 'react-flatpickr';
 import MonthSelectPlugin from 'flatpickr/dist/plugins/monthSelect';
-import { CreditCard, Plus, Trash2, DollarSign, TrendingDown, Calendar, ArrowUpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CreditCard, Plus, Trash2, DollarSign, TrendingDown, Calendar, ArrowUpCircle, ChevronDown, ChevronUp, CalendarClock } from 'lucide-react';
 
-export function Debts({ debts, transactions, onAdd, onPay, onDelete }) {
+export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onDelete }) {
   const [isAdding, setIsAdding] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [expandedStartId, setExpandedStartId] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [newDebt, setNewDebt] = useState({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', paymentAmount: '', type: 'personal' });
+  
+  // States for Paying Now
   const [payingId, setPayingId] = useState(null);
   const [payAmount, setPayAmount] = useState('');
+  const [payDate, setPayDate] = useState(new Date().toISOString());
+
+  // States for Scheduling Next Payment
+  const [schedulingId, setSchedulingId] = useState(null);
+  const [scheduleAmount, setScheduleAmount] = useState('');
+  const [scheduleDate, setScheduleDate] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -27,9 +35,20 @@ export function Debts({ debts, transactions, onAdd, onPay, onDelete }) {
 
   const handlePay = (id) => {
     if (!payAmount) return;
-    onPay(id, payAmount);
+    const formattedDate = payDate.includes('T') ? payDate : `${payDate}T12:00:00Z`;
+    onPay(id, payAmount, formattedDate);
     setPayingId(null);
     setPayAmount('');
+    setPayDate(new Date().toISOString());
+  };
+
+  const handleSchedule = (debt) => {
+    if (!scheduleAmount || !scheduleDate) return;
+    const formattedDate = scheduleDate.includes('T') ? scheduleDate : `${scheduleDate}T12:00:00Z`;
+    onSchedule(debt, formattedDate, scheduleAmount);
+    setSchedulingId(null);
+    setScheduleAmount('');
+    setScheduleDate('');
   };
 
   const filteredDebts = debts.filter(debt => {
@@ -201,29 +220,114 @@ export function Debts({ debts, transactions, onAdd, onPay, onDelete }) {
               </div>
 
               {payingId === debt.id ? (
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-neutral-800 p-2 rounded-2xl">
-                  <input
-                    type="number"
-                    value={payAmount}
-                    onChange={e => setPayAmount(e.target.value)}
-                    className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
-                    placeholder="Monto a pagar"
-                    autoFocus
-                  />
-                  <button onClick={() => handlePay(debt.id)} className="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-2 rounded-xl transition-colors">
-                    <DollarSign size={20} />
-                  </button>
+                <div className="flex flex-col gap-2 bg-slate-50 dark:bg-neutral-800 p-3 rounded-2xl animate-fade-in">
+                  <div className="flex items-center gap-2">
+                    <DollarSign size={16} className="text-slate-400" />
+                    <input
+                      type="number"
+                      value={payAmount}
+                      onChange={e => setPayAmount(e.target.value)}
+                      className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
+                      placeholder="Monto a pagar"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <Calendar size={16} className="text-slate-400" />
+                     <Flatpickr
+                        value={payDate}
+                        options={{ dateFormat: 'Y-m-d' }}
+                        onChange={(_, dateStr) => setPayDate(dateStr)}
+                        className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
+                        placeholder="Fecha de pago"
+                      />
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                     <button 
+                       onClick={() => {
+                         setPayingId(null);
+                         setPayAmount('');
+                       }}
+                       className="flex-1 py-2 rounded-xl bg-slate-200 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-neutral-600 transition-colors"
+                     >
+                       Cancelar
+                     </button>
+                     <button 
+                       onClick={() => handlePay(debt.id)} 
+                       className="flex-1 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20"
+                     >
+                       Confirmar
+                     </button>
+                  </div>
+                </div>
+              ) : schedulingId === debt.id ? (
+                <div className="flex flex-col gap-2 bg-rose-50 dark:bg-rose-900/10 p-3 rounded-2xl animate-fade-in border border-rose-100 dark:border-rose-900/20">
+                  <p className="text-xs font-bold text-rose-500 mb-1 ml-1">Programar Próximo Pago</p>
+                  <div className="flex items-center gap-2">
+                    <DollarSign size={16} className="text-rose-400" />
+                    <input
+                      type="number"
+                      value={scheduleAmount}
+                      onChange={e => setScheduleAmount(e.target.value)}
+                      className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
+                      placeholder="Monto próximo"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <CalendarClock size={16} className="text-rose-400" />
+                     <Flatpickr
+                        value={scheduleDate}
+                        options={{ dateFormat: 'Y-m-d', minDate: 'today' }}
+                        onChange={(_, dateStr) => setScheduleDate(dateStr)}
+                        className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
+                        placeholder="Fecha próxima"
+                      />
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                     <button 
+                       onClick={() => {
+                         setSchedulingId(null);
+                         setScheduleAmount('');
+                         setScheduleDate('');
+                       }}
+                       className="flex-1 py-2 rounded-xl bg-slate-200 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-neutral-600 transition-colors"
+                     >
+                       Cancelar
+                     </button>
+                     <button 
+                       onClick={() => handleSchedule(debt)} 
+                       className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-xs font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-200 dark:shadow-rose-900/20"
+                     >
+                       Programar
+                     </button>
+                  </div>
                 </div>
               ) : (
-                <button 
-                  onClick={() => {
-                    setPayingId(debt.id);
-                    setPayAmount('');
-                  }}
-                  className="w-full py-3 rounded-2xl bg-slate-50 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium text-sm transition-all flex items-center justify-center gap-2"
-                >
-                  <DollarSign size={16} /> Abonar a Deuda
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setPayingId(debt.id);
+                      setPayAmount('');
+                      setPayDate(new Date().toISOString().split('T')[0]);
+                      setSchedulingId(null);
+                    }}
+                    className="flex-1 py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 font-medium text-sm transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <DollarSign size={16} /> Abonar
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setSchedulingId(debt.id);
+                      setScheduleAmount('');
+                      setScheduleDate('');
+                      setPayingId(null);
+                    }}
+                    className="flex-1 py-3 rounded-2xl bg-slate-50 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400 font-medium text-sm transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <CalendarClock size={16} /> Programar
+                  </button>
+                </div>
               )}
 
               <div className="mt-4 border-t border-slate-100 dark:border-neutral-800 pt-4">
