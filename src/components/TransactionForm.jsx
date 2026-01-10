@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Flatpickr from 'react-flatpickr';
 import { PlusCircle, CheckCircle2 } from 'lucide-react';
 
 export function TransactionForm({ onAdd, debts = [] }) {
@@ -7,6 +8,7 @@ export function TransactionForm({ onAdd, debts = [] }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [selectedDebtId, setSelectedDebtId] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handleTypeChange = (newType) => {
     setType(newType);
@@ -23,7 +25,8 @@ export function TransactionForm({ onAdd, debts = [] }) {
       amount: parseFloat(amount),
       category,
       description,
-      date: new Date().toISOString(),
+      // Append Noon UTC to ensure date stays stable across timezones
+      date: (date || new Date().toISOString().split('T')[0]) + 'T12:00:00Z',
       debtId: selectedDebtId || null
     });
 
@@ -31,6 +34,8 @@ export function TransactionForm({ onAdd, debts = [] }) {
     setCategory('');
     setDescription('');
     setSelectedDebtId('');
+    // Don't reset date to keep context or reset to today
+    setDate(new Date().toISOString().split('T')[0]);
   };
 
   return (
@@ -75,6 +80,18 @@ export function TransactionForm({ onAdd, debts = [] }) {
               min="0"
               step="0.01"
               required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Fecha</label>
+          <div className="relative">
+             <Flatpickr
+              value={date}
+              options={{ dateFormat: 'Y-m-d' }}
+              onChange={(_, dateStr) => setDate(dateStr)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-neutral-800 border border-transparent rounded-2xl focus:bg-white dark:focus:bg-neutral-900 focus:border-slate-200 dark:focus:border-neutral-700 focus:ring-4 focus:ring-slate-100 dark:focus:ring-neutral-800 transition-all outline-none font-medium text-slate-800 dark:text-white"
             />
           </div>
         </div>

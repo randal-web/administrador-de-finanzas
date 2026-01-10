@@ -160,7 +160,8 @@ export function useFinance() {
       ...transaction,
       id: crypto.randomUUID(),
       date: transaction.date || new Date().toISOString(),
-      amount: parseFloat(transaction.amount)
+      amount: parseFloat(transaction.amount),
+      debt_id: transaction.debtId // Ensure local state has snake_case for filtering
     };
 
     // Optimistic update
@@ -330,7 +331,8 @@ export function useFinance() {
       amount: parseFloat(subscription.amount),
       dueDay: subscription.dueDay ? parseInt(subscription.dueDay) : null,
       frequency: subscription.frequency || 'monthly',
-      date: subscription.date || null
+      date: subscription.date || null,
+      debt_id: subscription.debtId || null
     };
 
     const previousData = { ...data };
@@ -347,7 +349,8 @@ export function useFinance() {
         due_day: newSubscription.dueDay,
         frequency: newSubscription.frequency,
         due_date: newSubscription.date,
-        user_id: user.id
+        user_id: user.id,
+        debt_id: subscription.debtId || null
       }]);
 
       if (error) {
@@ -495,7 +498,7 @@ export function useFinance() {
         return { error };
       }
     }
-    return { error: null };
+    return { data: newDebt, error: null };
   };
 
   const increaseDebt = async (id, amount) => {
@@ -557,7 +560,8 @@ export function useFinance() {
         amount: paymentAmount,
         type: 'expense',
         category: 'Deudas',
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        debtId: id
       });
     }
     return { error: null };

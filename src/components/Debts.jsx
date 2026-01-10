@@ -1,20 +1,27 @@
 import { useState } from 'react';
 import Flatpickr from 'react-flatpickr';
-import { CreditCard, Plus, Trash2, DollarSign, TrendingDown, Calendar } from 'lucide-react';
+import MonthSelectPlugin from 'flatpickr/dist/plugins/monthSelect';
+import { CreditCard, Plus, Trash2, DollarSign, TrendingDown, Calendar, ArrowUpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
-export function Debts({ debts, onAdd, onPay, onDelete }) {
+export function Debts({ debts, transactions, onAdd, onPay, onDelete }) {
   const [isAdding, setIsAdding] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [expandedStartId, setExpandedStartId] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [newDebt, setNewDebt] = useState({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), type: 'personal' });
+  const [newDebt, setNewDebt] = useState({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', paymentAmount: '', type: 'personal' });
   const [payingId, setPayingId] = useState(null);
   const [payAmount, setPayAmount] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newDebt.name || !newDebt.amount) return;
-    onAdd(newDebt);
-    setNewDebt({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), type: 'personal' });
+    onAdd({ 
+      ...newDebt, 
+      date: newDebt.date ? `${newDebt.date}T12:00:00Z` : '',
+      paymentDate: newDebt.paymentDate ? `${newDebt.paymentDate}T12:00:00Z` : '',
+      paymentAmount: newDebt.paymentAmount || newDebt.amount
+    });
+    setNewDebt({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', paymentAmount: '', type: 'personal' });
     setIsAdding(false);
   };
 
@@ -61,11 +68,19 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
 
           {!showAll && (
             <div className="relative w-full sm:w-auto">
-              <input
-                type="month"
+              <Flatpickr
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 font-medium"
+                options={{
+                  plugins: [new MonthSelectPlugin({ shorthand: true, dateFormat: "Y-m", theme: "airbnb" })],
+                  disableMobile: true
+                }}
+                onChange={([date]) => {
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  setSelectedMonth(`${year}-${month}`);
+                }}
+                className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 font-medium cursor-pointer"
+                placeholder="Seleccionar Mes"
               />
             </div>
           )}
@@ -80,7 +95,7 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
 
       {isAdding && (
         <form onSubmit={handleSubmit} className="mb-8 p-6 bg-slate-50 dark:bg-neutral-800/50 rounded-3xl border border-slate-100 dark:border-neutral-700 animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <input
               type="text"
               placeholder="Nombre (ej. Tarjeta Visa, Préstamo)"
@@ -106,12 +121,44 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
               className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
               required
             />
-            <Flatpickr
-              value={newDebt.date}
-              options={{ dateFormat: 'Y-m-d' }}
-              onChange={([selected]) => setNewDebt({ ...newDebt, date: selected ? selected.toISOString().slice(0,10) : '' })}
-              className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
-            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-neutral-400 mb-2 uppercase tracking-wider ml-1">Fecha de la Deuda</label>
+              <Flatpickr
+                value={newDebt.date}
+                options={{ dateFormat: 'Y-m-d' }}
+                onChange={(_, dateStr) => setNewDebt({ ...newDebt, date: dateStr })}
+                className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
+                placeholder="Fecha de la deuda"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-neutral-400 mb-2 uppercase tracking-wider ml-1">Fecha de Pago (Opcional)</label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-grow">
+                  <Flatpickr
+                    value={newDebt.paymentDate}
+                    options={{ dateFormat: 'Y-m-d' }}
+                    onChange={(_, dateStr) => setNewDebt({ ...newDebt, paymentDate: dateStr })}
+                    className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
+                    placeholder="Fecha próximo pago"
+                  />
+                </div>
+                {newDebt.paymentDate && (
+                  <div className="w-full sm:w-32 animate-fade-in">
+                    <input
+                      type="number"
+                      placeholder="Monto"
+                      value={newDebt.paymentAmount}
+                      onChange={e => setNewDebt({...newDebt, paymentAmount: e.target.value})}
+                      className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
+                      title="Monto del primer pago"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <button type="submit" className="w-full bg-rose-500 text-white py-4 rounded-2xl hover:bg-rose-600 font-medium transition-all shadow-lg shadow-rose-200 dark:shadow-rose-900/20 hover:shadow-xl hover:shadow-rose-300 transform hover:-translate-y-0.5">
             Registrar Deuda
@@ -178,6 +225,34 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
                   <DollarSign size={16} /> Abonar a Deuda
                 </button>
               )}
+
+              <div className="mt-4 border-t border-slate-100 dark:border-neutral-800 pt-4">
+                 <button 
+                  onClick={() => setExpandedStartId(expandedStartId === debt.id ? null : debt.id)}
+                  className="w-full flex items-center justify-between text-xs font-medium text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300"
+                 >
+                  <span>Historial de Pagos</span>
+                  {expandedStartId === debt.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                 </button>
+
+                 {expandedStartId === debt.id && (
+                   <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">
+                     {transactions && transactions.filter(t => t.debt_id === debt.id).length > 0 ? (
+                       transactions.filter(t => t.debt_id === debt.id).map(payment => (
+                         <div key={payment.id} className="flex justify-between items-center text-xs p-2 bg-slate-50 dark:bg-neutral-800/50 rounded-lg">
+                           <span className="text-slate-500 dark:text-neutral-400">{new Date(payment.date).toLocaleDateString()}</span>
+                           <span className="font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 px-1.5 py-0.5 rounded ml-auto flex items-center gap-1">
+                             <ArrowUpCircle size={10} />
+                             ${payment.amount.toFixed(2)}
+                           </span>
+                         </div>
+                       ))
+                     ) : (
+                       <p className="text-xs text-center text-slate-400 dark:text-neutral-600 italic py-2">No hay pagos registrados</p>
+                     )}
+                   </div>
+                 )}
+              </div>
             </div>
           ))
         )}

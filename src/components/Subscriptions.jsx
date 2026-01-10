@@ -24,7 +24,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
       if (!newSub.date) return;
     }
 
-    onAdd(newSub);
+    onAdd({ ...newSub, date: newSub.date ? `${newSub.date}T12:00:00Z` : '' });
     setNewSub({ name: '', amount: '', dueDay: '', frequency: 'monthly', date: '' });
     setIsAdding(false);
   };
@@ -40,6 +40,8 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
              lastPayment.getFullYear() === today.getFullYear();
     } else if (sub.frequency === 'yearly') {
       return lastPayment.getFullYear() === today.getFullYear();
+    } else if (sub.frequency === 'one-time') {
+      return true;
     }
     return false;
   };
@@ -172,7 +174,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
               <Flatpickr
                 value={newSub.date}
                 options={{ dateFormat: 'Y-m-d' }}
-                onChange={([selected]) => setNewSub({ ...newSub, date: selected ? selected.toISOString().slice(0,10) : '' })}
+                onChange={(_, dateStr) => setNewSub({ ...newSub, date: dateStr })}
                 className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
                 required
               />
@@ -249,9 +251,9 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                 {sub.status === 'paid' || isPaid ? (
                   <button 
                     disabled
-                    className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium text-sm flex items-center justify-center gap-2 cursor-default"
+                    className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-medium text-sm flex items-center justify-center gap-2 cursor-default"
                   >
-                    <CheckCircle2 size={16} /> {sub.status === 'paid' ? 'Pagado' : 'Pagado (Ciclo Actual)'}
+                    <CheckCircle2 size={16} /> {sub.status === 'paid' || sub.frequency === 'one-time' ? 'Pagado' : 'Pagado (Ciclo Actual)'}
                   </button>
                 ) : (
                   <button 

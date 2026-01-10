@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Flatpickr from 'react-flatpickr';
+import MonthSelectPlugin from 'flatpickr/dist/plugins/monthSelect';
 import { TrendingUp, Plus, Trash2, DollarSign, Calendar } from 'lucide-react';
 
 export function ExpectedIncome({ income, onAdd, onDelete }) {
@@ -10,7 +11,8 @@ export function ExpectedIncome({ income, onAdd, onDelete }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newIncome.source || !newIncome.amount) return;
-    onAdd(newIncome);
+    // Append Noon UTC to ensure date stays stable
+    onAdd({ ...newIncome, date: newIncome.date ? `${newIncome.date}T12:00:00Z` : '' });
     setNewIncome({ source: '', amount: '', date: new Date().toISOString().slice(0, 10) });
     setIsAdding(false);
   };
@@ -38,11 +40,19 @@ export function ExpectedIncome({ income, onAdd, onDelete }) {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
           <div className="relative w-full sm:w-auto">
-            <input
-              type="month"
+            <Flatpickr
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 font-medium"
+              options={{
+                plugins: [new MonthSelectPlugin({ shorthand: true, dateFormat: "Y-m", theme: "airbnb" })],
+                disableMobile: true
+              }}
+              onChange={([date]) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                setSelectedMonth(`${year}-${month}`);
+              }}
+              className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 font-medium cursor-pointer"
+              placeholder="Seleccionar Mes"
             />
           </div>
           <button
@@ -76,7 +86,7 @@ export function ExpectedIncome({ income, onAdd, onDelete }) {
             <Flatpickr
               value={newIncome.date}
               options={{ dateFormat: 'Y-m-d' }}
-              onChange={([selected]) => setNewIncome({ ...newIncome, date: selected ? selected.toISOString().slice(0,10) : '' })}
+              onChange={(_, dateStr) => setNewIncome({ ...newIncome, date: dateStr })}
               className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
             />
           </div>

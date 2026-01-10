@@ -68,3 +68,7 @@ add column if not exists type text default 'personal'; -- 'personal' or 'credit-
 -- Add debt_id column to transactions
 alter table transactions
 add column if not exists debt_id uuid references debts(id) on delete set null;
+
+-- Add debt_id to subscriptions table
+alter table subscriptions
+add column if not exists debt_id uuid references debts(id) on delete cascade;

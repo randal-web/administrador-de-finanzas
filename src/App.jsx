@@ -162,9 +162,34 @@ function App() {
   };
 
   const handleAddDebt = async (debt) => {
-    const { error } = await addDebt(debt);
-    if (error) showToast('Error al guardar deuda', 'error');
-    else showToast('Deuda guardada correctamente');
+    // Separate paymentDate and paymentAmount from the rest of the debt object
+    const { paymentDate, paymentAmount, ...debtData } = debt;
+    
+    const { data: newDebt, error } = await addDebt(debtData);
+    
+    if (error) {
+      showToast('Error al guardar deuda', 'error');
+      return;
+    }
+    
+    // If a payment date was selected, add it to subscriptions/payments automatically
+    if (paymentDate && newDebt) {
+      const { error: subError } = await addSubscription({
+        name: `Pago: ${debtData.name}`,
+        amount: paymentAmount || debtData.amount, // Use specified payment amount or full debt amount
+        frequency: 'one-time',
+        date: paymentDate,
+        debtId: newDebt.id // Link subscription to debt
+      });
+      
+      if (subError) {
+        showToast('Deuda guardada, pero error al crear recordatorio de pago', 'warning');
+      } else {
+        showToast('Deuda y fecha de pago registradas correctamente');
+      }
+    } else {
+      showToast('Deuda guardada correctamente');
+    }
   };
 
   const handlePayDebt = async (id, amount) => {
@@ -245,6 +270,7 @@ function App() {
           transactions={transactions} 
           goals={goals}
           debts={debts}
+          subscriptions={subscriptions}
           expectedIncome={expectedIncome}
           onDelete={handleDeleteTransaction} 
         />
@@ -262,6 +288,7 @@ function App() {
       content = (
         <Debts 
           debts={debts} 
+          transactions={transactions}
           onAdd={handleAddDebt} 
           onPay={handlePayDebt} 
           onDelete={handleDeleteDebt} 
@@ -288,28 +315,50 @@ function App() {
               message: `¿Confirmas que deseas registrar el pago de ${sub.name} por $${sub.amount}? Se creará un gasto automáticamente.`,
               confirmText: 'Registrar Pago',
               onConfirm: async () => {
-                // 1. Create the expense transaction
-                const { error: txError } = await addTransaction({
-                  description: `Pago suscripción: ${sub.name}`,
-                  amount: sub.amount,
-                  type: 'expense',
-                  category: 'Servicios',
-                  date: new Date().toISOString()
-                });
+                // Check if this is a debt payment
+                if (sub.debt_id) {
+                  // 1. Pay the debt (accounts for transaction and debt balance update)
+                  const { error: debtError } = await payDebt(sub.debt_id, sub.amount);
+                  
+                  if (debtError) {
+                    showToast('Error al registrar pago de deuda', 'error');
+                    return;
+                  }
 
-                if (txError) {
-                  showToast('Error al registrar transacción', 'error');
-                  return;
-                }
+                  // 2. Just update the subscription next payment date
+                  const { error: subError } = await paySubscription(sub.id, sub.amount);
 
-                // 2. Record the subscription payment
-                const { error: subError } = await paySubscription(sub.id, sub.amount);
-                
-                if (subError) {
-                  showToast('Error al actualizar suscripción', 'error');
+                  if (subError) {
+                    showToast('Pago registrado, pero error al actualizar fecha del recordatorio', 'warning');
+                  } else {
+                    const newBalance = stats.balance - parseFloat(sub.amount);
+                    showToast(`Pago de deuda registrado. Balance actual: $${newBalance.toFixed(2)}`);
+                  }
                 } else {
-                  const newBalance = stats.balance - parseFloat(sub.amount);
-                  showToast(`Pago registrado correctamente. Balance actual: $${newBalance.toFixed(2)}`);
+                  // Standard subscription payment
+                  // 1. Create the expense transaction
+                  const { error: txError } = await addTransaction({
+                    description: `Pago suscripción: ${sub.name}`,
+                    amount: sub.amount,
+                    type: 'expense',
+                    category: 'Servicios',
+                    date: new Date().toISOString()
+                  });
+  
+                  if (txError) {
+                    showToast('Error al registrar transacción', 'error');
+                    return;
+                  }
+  
+                  // 2. Record the subscription payment
+                  const { error: subError } = await paySubscription(sub.id, sub.amount);
+                  
+                  if (subError) {
+                    showToast('Error al actualizar suscripción', 'error');
+                  } else {
+                    const newBalance = stats.balance - parseFloat(sub.amount);
+                    showToast(`Pago registrado correctamente. Balance actual: $${newBalance.toFixed(2)}`);
+                  }
                 }
               }
             });
