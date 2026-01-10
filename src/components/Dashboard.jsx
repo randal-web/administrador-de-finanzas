@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import Flatpickr from 'react-flatpickr';
 import MonthSelectPlugin from 'flatpickr/dist/plugins/monthSelect';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Wallet, TrendingUp, TrendingDown, PiggyBank, CreditCard, Target, Calendar, Calculator, AlertCircle } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, PiggyBank, CreditCard, Target, Calendar, Calculator, AlertCircle, FileText } from 'lucide-react';
 import { History } from './History';
+import { generatePDF } from '../lib/pdfGenerator';
 
 // eslint-disable-next-line no-unused-vars
 const StatCard = ({ title, amount, icon: IconComponent, colorClass, bgClass, subtitle, delay }) => (
@@ -131,6 +132,15 @@ export function Dashboard({ stats: globalStats, transactions, goals, debts, expe
     { name: 'Ahorros', value: periodStats.savings, color: '#60a5fa' }, 
   ];
 
+  const handleDownloadPDF = () => {
+    const periodName = showAllStats ? 'Histórico Completo' : selectedMonth;
+    const relevantTransactions = showAllStats 
+      ? transactions 
+      : transactions.filter(t => t.date.startsWith(selectedMonth));
+    
+    generatePDF(periodName, periodStats, relevantTransactions);
+  };
+
   const totalDebts = debts?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
   
   const totalExpectedIncome = useMemo(() => {
@@ -149,6 +159,14 @@ export function Dashboard({ stats: globalStats, transactions, goals, debts, expe
     <div className="space-y-8">
       {/* Period Selector */}
       <div className="flex flex-col sm:flex-row justify-end items-center gap-4">
+        <button
+          onClick={handleDownloadPDF}
+          className="p-2.5 bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 rounded-xl hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors shadow-sm"
+          title="Descargar Reporte PDF"
+        >
+          <FileText size={20} />
+        </button>
+
         <button
           onClick={() => setShowAllStats(!showAllStats)}
           className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-medium transition-all text-sm ${
