@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Flatpickr from 'react-flatpickr';
 import { CreditCard, Plus, Trash2, DollarSign, TrendingDown, Calendar } from 'lucide-react';
 
 export function Debts({ debts, onAdd, onPay, onDelete }) {
@@ -105,12 +106,11 @@ export function Debts({ debts, onAdd, onPay, onDelete }) {
               className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
               required
             />
-            <input
-              type="date"
+            <Flatpickr
               value={newDebt.date}
-              onChange={e => setNewDebt({...newDebt, date: e.target.value})}
+              options={{ dateFormat: 'Y-m-d' }}
+              onChange={([selected]) => setNewDebt({ ...newDebt, date: selected ? selected.toISOString().slice(0,10) : '' })}
               className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
-              required
             />
           </div>
           <button type="submit" className="w-full bg-rose-500 text-white py-4 rounded-2xl hover:bg-rose-600 font-medium transition-all shadow-lg shadow-rose-200 dark:shadow-rose-900/20 hover:shadow-xl hover:shadow-rose-300 transform hover:-translate-y-0.5">

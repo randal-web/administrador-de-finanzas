@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Flatpickr from 'react-flatpickr';
 import { Calendar, Plus, Trash2, AlertCircle, CheckCircle2, Clock, X, History } from 'lucide-react';
 
 export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
@@ -168,10 +169,10 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                 required
               />
             ) : (
-              <input
-                type="date"
+              <Flatpickr
                 value={newSub.date}
-                onChange={e => setNewSub({...newSub, date: e.target.value})}
+                options={{ dateFormat: 'Y-m-d' }}
+                onChange={([selected]) => setNewSub({ ...newSub, date: selected ? selected.toISOString().slice(0,10) : '' })}
                 className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
                 required
               />
