@@ -11,6 +11,7 @@ import { Auth } from './components/Auth';
 import { Notifications } from './components/Notifications';
 import { ConfirmModal } from './components/ConfirmModal';
 import { Toast } from './components/Toast';
+import { AIChat } from './components/AIChat';
 import { supabase } from './lib/supabase';
 import { getDaysRemaining } from './lib/utils';
 import packageJson from '../package.json';
@@ -521,6 +522,16 @@ function App() {
           onClose={() => setToast(null)} 
         />
       )}
+
+      {/* AI Assistant */}
+      <AIChat 
+        stats={stats}
+        transactions={transactions}
+        goals={goals}
+        debts={debts}
+        subscriptions={subscriptions}
+        expectedIncome={expectedIncome}
+      />
     </div>
   );
 }
