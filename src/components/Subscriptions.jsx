@@ -1,4 +1,7 @@
 import { useState } from 'react';
+// ...existing code...
+import ReactDOM from 'react-dom';
+import { useEffect } from 'react';
 import Flatpickr from 'react-flatpickr';
 import { Calendar, Plus, Trash2, AlertCircle, CheckCircle2, Clock, X, History } from 'lucide-react';
 import 'flatpickr/dist/themes/material_blue.css'; // Asegúrate de tener los estilos de flatpickr si los usas
@@ -6,6 +9,19 @@ import 'flatpickr/dist/themes/material_blue.css'; // Asegúrate de tener los est
 export function Subscriptions({ subscriptions = [], onAdd, onDelete, onPay }) {
   const [isAdding, setIsAdding] = useState(false);
   const [selectedSub, setSelectedSub] = useState(null);
+
+  // Scroll al inicio cuando se abre el modal de detalles
+  useEffect(() => {
+    if (selectedSub) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    // Cleanup por si el componente se desmonta con el modal abierto
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedSub]);
   const [newSub, setNewSub] = useState({ 
     name: '', 
     amount: '', 
@@ -306,70 +322,73 @@ export function Subscriptions({ subscriptions = [], onAdd, onDelete, onPay }) {
 
       {/* MODAL DETALLES */}
       {selectedSub && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div 
-            className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-800 dark:text-white">{selectedSub.name}</h3>
-              <button onClick={() => setSelectedSub(null)} className="p-2 hover:bg-slate-50 dark:hover:bg-neutral-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-neutral-200 transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              {/* Details */}
-              <div className="flex justify-between items-center bg-slate-50 dark:bg-neutral-800/50 p-4 rounded-2xl">
-                <div>
-                  <p className="text-sm text-slate-400 dark:text-neutral-500">Monto</p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-white">${Number(selectedSub.amount).toFixed(2)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-slate-400 dark:text-neutral-500">Frecuencia</p>
-                  <p className="font-medium text-slate-800 dark:text-white capitalize">
-                    {selectedSub.frequency === 'monthly' ? 'Mensual' : selectedSub.frequency === 'yearly' ? 'Anual' : 'Único'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Button */}
-              {!isPaidCurrentCycle(selectedSub) && selectedSub.status !== 'paid' && (
-                <button 
-                  onClick={() => {
-                    onPay && onPay(selectedSub);
-                    setSelectedSub(null);
-                  }}
-                  className="w-full py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={18} /> Cerrar Pago (Registrar)
+        ReactDOM.createPortal(
+          <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div 
+              className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-scale-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white">{selectedSub.name}</h3>
+                <button onClick={() => setSelectedSub(null)} className="p-2 hover:bg-slate-50 dark:hover:bg-neutral-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-neutral-200 transition-colors">
+                  <X size={20} />
                 </button>
-              )}
+              </div>
+              <div className="p-6 space-y-6">
+                {/* Details */}
+                <div className="flex justify-between items-center bg-slate-50 dark:bg-neutral-800/50 p-4 rounded-2xl">
+                  <div>
+                    <p className="text-sm text-slate-400 dark:text-neutral-500">Monto</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-white">${Number(selectedSub.amount).toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-slate-400 dark:text-neutral-500">Frecuencia</p>
+                    <p className="font-medium text-slate-800 dark:text-white capitalize">
+                      {selectedSub.frequency === 'monthly' ? 'Mensual' : selectedSub.frequency === 'yearly' ? 'Anual' : 'Único'}
+                    </p>
+                  </div>
+                </div>
 
-              {/* History */}
-              <div>
-                <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                  <History size={18} className="text-slate-400" /> Historial de Pagos
-                </h4>
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                  {selectedSub.payments && selectedSub.payments.length > 0 ? (
-                    selectedSub.payments.map(payment => (
-                      <div key={payment.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-neutral-800/50 rounded-xl border border-slate-100 dark:border-neutral-800">
-                        <span className="text-sm font-medium text-slate-600 dark:text-neutral-300">
-                          {new Date(payment.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                          ${Number(payment.amount).toFixed(2)}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-slate-400 dark:text-neutral-500 text-center py-4">No hay pagos registrados</p>
-                  )}
+                {/* Action Button */}
+                {!isPaidCurrentCycle(selectedSub) && selectedSub.status !== 'paid' && (
+                  <button 
+                    onClick={() => {
+                      onPay && onPay(selectedSub);
+                      setSelectedSub(null);
+                    }}
+                    className="w-full py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={18} /> Cerrar Pago (Registrar)
+                  </button>
+                )}
+
+                {/* History */}
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                    <History size={18} className="text-slate-400" /> Historial de Pagos
+                  </h4>
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                    {selectedSub.payments && selectedSub.payments.length > 0 ? (
+                      selectedSub.payments.map(payment => (
+                        <div key={payment.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-neutral-800/50 rounded-xl border border-slate-100 dark:border-neutral-800">
+                          <span className="text-sm font-medium text-slate-600 dark:text-neutral-300">
+                            {new Date(payment.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            ${Number(payment.amount).toFixed(2)}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-400 dark:text-neutral-500 text-center py-4">No hay pagos registrados</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </div>,
+          document.body
+        )
       )}
     </div>
   );
