@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import Flatpickr from 'react-flatpickr';
 import { Calendar, Plus, Trash2, AlertCircle, CheckCircle2, Clock, X, History } from 'lucide-react';
+import 'flatpickr/dist/themes/material_blue.css'; // Asegúrate de tener los estilos de flatpickr si los usas
 
-export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
+export function Subscriptions({ subscriptions = [], onAdd, onDelete, onPay }) {
   const [isAdding, setIsAdding] = useState(false);
   const [selectedSub, setSelectedSub] = useState(null);
   const [newSub, setNewSub] = useState({ 
@@ -24,7 +25,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
       if (!newSub.date) return;
     }
 
-    onAdd({ ...newSub, date: newSub.date ? `${newSub.date}T12:00:00Z` : '' });
+    onAdd({ ...newSub, amount: parseFloat(newSub.amount), date: newSub.date ? `${newSub.date}T12:00:00Z` : '' });
     setNewSub({ name: '', amount: '', dueDay: '', frequency: 'monthly', date: '' });
     setIsAdding(false);
   };
@@ -51,6 +52,10 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
     today.setHours(0, 0, 0, 0);
     const isPaid = isPaidCurrentCycle(sub);
 
+    // Si ya está pagado (y no es pago único), calculamos para el siguiente ciclo solo visualmente si se desea,
+    // pero para el ordenamiento usualmente queremos ver primero lo que vence pronto.
+    // Aquí mantengo tu lógica original.
+
     if (sub.frequency === 'monthly' || !sub.frequency) {
       const dueDay = parseInt(sub.dueDay);
       const currentDay = today.getDate();
@@ -58,12 +63,12 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
       if (dueDay >= currentDay) {
         return dueDay - currentDay;
       } else {
-        // Si el día ya pasó y no está pagado, mostrar días para el próximo ciclo
+        // Próximo mes
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
         return (daysInMonth - currentDay) + dueDay;
       }
     } else if (sub.frequency === 'yearly') {
-      const [year, month, day] = sub.date.split('-').map(Number);
+      const [year, month, day] = sub.date.split('T')[0].split('-').map(Number);
       const targetDate = new Date(today.getFullYear(), month - 1, day);
 
       if (targetDate < today) {
@@ -98,13 +103,93 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
     return `Vence en ${daysRemaining} días`;
   };
 
-  // Sort subscriptions by days remaining
-  const sortedSubscriptions = [...subscriptions].sort((a, b) => {
-    return getDaysRemaining(a) - getDaysRemaining(b);
-  });
+  // Separamos las listas para poder renderizar los títulos "Pendientes" y "Pagados" correctamente
+  const pendingSubs = subscriptions
+    .filter(sub => !isPaidCurrentCycle(sub))
+    .sort((a, b) => getDaysRemaining(a) - getDaysRemaining(b));
+
+  const paidSubs = subscriptions
+    .filter(sub => isPaidCurrentCycle(sub))
+    .sort((a, b) => getDaysRemaining(a) - getDaysRemaining(b));
+
+  // Componente auxiliar para renderizar una tarjeta (evita duplicar código JSX)
+  const SubscriptionCard = ({ sub }) => {
+    const daysRemaining = getDaysRemaining(sub);
+    const statusColor = getStatusColor(daysRemaining);
+    const isPaid = isPaidCurrentCycle(sub);
+    
+    let dateText = '';
+    if (sub.frequency === 'monthly' || !sub.frequency) {
+      dateText = `Día ${sub.dueDay} de cada mes`;
+    } else if (sub.frequency === 'yearly') {
+      const [year, month, day] = sub.date.split('T')[0].split('-');
+      const date = new Date(year, month - 1, day);
+      dateText = `Anual: ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
+    } else {
+      const date = new Date(sub.date);
+      dateText = `Único: ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    }
+
+    let paidLabel = null;
+    if (isPaid) {
+      if (sub.frequency === 'monthly' || !sub.frequency) paidLabel = 'PAGADO ESTE MES';
+      else if (sub.frequency === 'yearly') paidLabel = 'PAGADO ESTE AÑO';
+      else if (sub.frequency === 'one-time') paidLabel = 'PAGADO';
+    }
+
+    return (
+      <div 
+        onClick={() => setSelectedSub(sub)}
+        className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden cursor-pointer"
+      >
+        {paidLabel && (
+          <div className="absolute top-0 left-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-10">
+            {paidLabel}
+          </div>
+        )}
+        <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+           <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(sub.id); }} 
+            className="text-slate-300 dark:text-neutral-600 hover:text-rose-400 dark:hover:text-rose-400 transition-colors bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20"
+           >
+            <Trash2 size={18} />
+          </button>
+        </div>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="font-bold text-slate-800 dark:text-white text-lg">{sub.name}</h3>
+            <p className="text-xs text-slate-400 dark:text-neutral-500 font-medium mt-1">{dateText}</p>
+          </div>
+          <div className="text-right">
+            <span className="text-xl font-bold text-slate-700 dark:text-neutral-200">${Number(sub.amount).toFixed(2)}</span>
+          </div>
+        </div>
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl ${statusColor} transition-colors mb-3`}>
+          {daysRemaining <= 3 ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span className="text-sm font-bold">{getStatusText(daysRemaining)}</span>
+        </div>
+        {sub.status === 'paid' || isPaid ? (
+          <button 
+            disabled
+            className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-medium text-sm flex items-center justify-center gap-2 cursor-default"
+          >
+            <CheckCircle2 size={16} /> {sub.status === 'paid' || sub.frequency === 'one-time' ? 'Pagado' : 'Pagado (Ciclo Actual)'}
+          </button>
+        ) : (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onPay && onPay(sub); }}
+            className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium text-sm transition-all flex items-center justify-center gap-2"
+          >
+            <CheckCircle2 size={16} /> Registrar Pago
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-50 dark:border-neutral-800">
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-8">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
@@ -123,6 +208,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
         </button>
       </div>
 
+      {/* FORMULARIO */}
       {isAdding && (
         <form onSubmit={handleSubmit} className="mb-8 p-6 bg-slate-50 dark:bg-neutral-800/50 rounded-3xl border border-slate-100 dark:border-neutral-700 animate-fade-in">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -180,8 +266,9 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
         </form>
       )}
 
+      {/* LISTADO GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sortedSubscriptions.length === 0 ? (
+        {subscriptions.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-400 dark:text-neutral-600">
             <div className="w-16 h-16 bg-slate-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-4">
               <Clock size={24} className="text-slate-300 dark:text-neutral-600" />
@@ -189,97 +276,42 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
             <p className="font-medium">No tienes pagos recurrentes registrados</p>
           </div>
         ) : (
-          sortedSubscriptions.map(sub => {
-            const daysRemaining = getDaysRemaining(sub);
-            const statusColor = getStatusColor(daysRemaining);
-            const isPaid = isPaidCurrentCycle(sub);
-
-            let dateText = '';
-            if (sub.frequency === 'monthly' || !sub.frequency) {
-              dateText = `Día ${sub.dueDay} de cada mes`;
-            } else if (sub.frequency === 'yearly') {
-              const [year, month, day] = sub.date.split('-');
-              const date = new Date(year, month - 1, day);
-              dateText = `Anual: ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
-            } else {
-              const date = new Date(sub.date);
-              dateText = `Único: ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-            }
-
-            // Etiqueta de pagado para todos los tipos
-            let paidLabel = null;
-            if (isPaid) {
-              if (sub.frequency === 'monthly' || !sub.frequency) {
-                paidLabel = 'PAGADO ESTE MES';
-              } else if (sub.frequency === 'yearly') {
-                paidLabel = 'PAGADO ESTE AÑO';
-              } else if (sub.frequency === 'one-time') {
-                paidLabel = 'PAGADO';
-              }
-            }
-
-            return (
-              <div 
-                key={sub.id} 
-                onClick={() => setSelectedSub(sub)}
-                className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden cursor-pointer"
-              >
-                {paidLabel && (
-                  <div className="absolute top-0 left-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-10">
-                    {paidLabel}
-                  </div>
-                )}
-
-                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                   <button 
-                    onClick={(e) => { e.stopPropagation(); onDelete(sub.id); }} 
-                    className="text-slate-300 dark:text-neutral-600 hover:text-rose-400 dark:hover:text-rose-400 transition-colors bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                   >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-  
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-bold text-slate-800 dark:text-white text-lg">{sub.name}</h3>
-                    <p className="text-xs text-slate-400 dark:text-neutral-500 font-medium mt-1">{dateText}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xl font-bold text-slate-700 dark:text-neutral-200">${sub.amount.toFixed(2)}</span>
-                  </div>
-                </div>
-                
-                <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl ${statusColor} transition-colors mb-3`}>
-                  {daysRemaining <= 3 ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-                  <span className="text-sm font-bold">{getStatusText(daysRemaining)}</span>
-                </div>
-
-                {sub.status === 'paid' || isPaid ? (
-                  <button 
-                    disabled
-                    className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-medium text-sm flex items-center justify-center gap-2 cursor-default"
-                  >
-                    <CheckCircle2 size={16} /> {sub.status === 'paid' || sub.frequency === 'one-time' ? 'Pagado' : 'Pagado (Ciclo Actual)'}
-                  </button>
-                ) : (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onPay && onPay(sub); }}
-                    className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium text-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 size={16} /> Registrar Pago
-                  </button>
-                )}
+          <>
+            {/* SECCIÓN PENDIENTES */}
+            {pendingSubs.length > 0 && (
+              <div className="col-span-full mb-2">
+                <h3 className="text-base font-bold text-slate-700 dark:text-white mb-2 flex items-center gap-2">
+                  <AlertCircle size={16} className="text-amber-500"/> Pendientes
+                </h3>
               </div>
-            );
-          })
+            )}
+            {pendingSubs.map(sub => (
+              <SubscriptionCard key={sub.id} sub={sub} />
+            ))}
+
+            {/* SECCIÓN PAGADOS */}
+            {paidSubs.length > 0 && (
+              <div className="col-span-full mt-6 mb-2">
+                 <h3 className="text-base font-bold text-slate-700 dark:text-white mb-2 flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-500"/> Pagados
+                </h3>
+              </div>
+            )}
+            {paidSubs.map(sub => (
+              <SubscriptionCard key={sub.id} sub={sub} />
+            ))}
+          </>
         )}
       </div>
 
-      {/* History Modal */}
+      {/* MODAL DETALLES */}
       {selectedSub && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/20 dark:bg-black/50 backdrop-blur-sm transition-all duration-300" onClick={() => setSelectedSub(null)}>
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-white/50 dark:border-neutral-800 animate-scale-in" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-6 border-b border-slate-50 dark:border-neutral-800">
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div 
+            className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center">
               <h3 className="text-xl font-bold text-slate-800 dark:text-white">{selectedSub.name}</h3>
               <button onClick={() => setSelectedSub(null)} className="p-2 hover:bg-slate-50 dark:hover:bg-neutral-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-neutral-200 transition-colors">
                 <X size={20} />
@@ -290,7 +322,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
               <div className="flex justify-between items-center bg-slate-50 dark:bg-neutral-800/50 p-4 rounded-2xl">
                 <div>
                   <p className="text-sm text-slate-400 dark:text-neutral-500">Monto</p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-white">${selectedSub.amount.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-white">${Number(selectedSub.amount).toFixed(2)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-slate-400 dark:text-neutral-500">Frecuencia</p>
@@ -326,7 +358,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
                           {new Date(payment.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                          ${payment.amount.toFixed(2)}
+                          ${Number(payment.amount).toFixed(2)}
                         </span>
                       </div>
                     ))
