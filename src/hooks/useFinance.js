@@ -325,6 +325,7 @@ export function useFinance() {
   };
 
   const addSubscription = async (subscription) => {
+    // No establecer lastPaymentDate al agregar, aunque el día ya haya pasado
     const newSubscription = {
       ...subscription,
       id: crypto.randomUUID(),
@@ -332,7 +333,8 @@ export function useFinance() {
       dueDay: subscription.dueDay ? parseInt(subscription.dueDay) : null,
       frequency: subscription.frequency || 'monthly',
       date: subscription.date || null,
-      debt_id: subscription.debtId || null
+      debt_id: subscription.debtId || null,
+      lastPaymentDate: null
     };
 
     const previousData = { ...data };

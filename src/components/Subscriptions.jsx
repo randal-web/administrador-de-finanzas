@@ -50,40 +50,34 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const isPaid = isPaidCurrentCycle(sub);
-    
+
     if (sub.frequency === 'monthly' || !sub.frequency) {
       const dueDay = parseInt(sub.dueDay);
       const currentDay = today.getDate();
-      
+
       if (dueDay >= currentDay) {
         return dueDay - currentDay;
       } else {
-        // If the due date has passed for this month
-        if (!isPaid) {
-          // If not paid, it's OVERDUE. Return negative days.
-          // e.g. Due 15th, Today 16th. 15 - 16 = -1 (1 day overdue)
-          return dueDay - currentDay;
-        }
-        // If paid, show next month's due date (reset on 1st of month logic handled naturally by currentDay being 1)
+        // Si el día ya pasó y no está pagado, mostrar días para el próximo ciclo
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
         return (daysInMonth - currentDay) + dueDay;
       }
     } else if (sub.frequency === 'yearly') {
       const [year, month, day] = sub.date.split('-').map(Number);
       const targetDate = new Date(today.getFullYear(), month - 1, day);
-      
+
       if (targetDate < today) {
         targetDate.setFullYear(today.getFullYear() + 1);
       }
-      
+
       const diffTime = Math.abs(targetDate - today);
       return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
     } else if (sub.frequency === 'one-time') {
       const targetDate = new Date(sub.date);
       targetDate.setHours(0, 0, 0, 0);
-      
+
       if (targetDate < today) return -1; // Expired
-      
+
       const diffTime = Math.abs(targetDate - today);
       return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
@@ -199,7 +193,7 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
             const daysRemaining = getDaysRemaining(sub);
             const statusColor = getStatusColor(daysRemaining);
             const isPaid = isPaidCurrentCycle(sub);
-            
+
             let dateText = '';
             if (sub.frequency === 'monthly' || !sub.frequency) {
               dateText = `Día ${sub.dueDay} de cada mes`;
@@ -211,19 +205,31 @@ export function Subscriptions({ subscriptions, onAdd, onDelete, onPay }) {
               const date = new Date(sub.date);
               dateText = `Único: ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`;
             }
-            
+
+            // Etiqueta de pagado para todos los tipos
+            let paidLabel = null;
+            if (isPaid) {
+              if (sub.frequency === 'monthly' || !sub.frequency) {
+                paidLabel = 'PAGADO ESTE MES';
+              } else if (sub.frequency === 'yearly') {
+                paidLabel = 'PAGADO ESTE AÑO';
+              } else if (sub.frequency === 'one-time') {
+                paidLabel = 'PAGADO';
+              }
+            }
+
             return (
               <div 
                 key={sub.id} 
                 onClick={() => setSelectedSub(sub)}
                 className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden cursor-pointer"
               >
-                {isPaid && sub.frequency !== 'one-time' && (
+                {paidLabel && (
                   <div className="absolute top-0 left-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-10">
-                    {sub.frequency === 'monthly' ? 'PAGADO ESTE MES' : 'PAGADO ESTE AÑO'}
+                    {paidLabel}
                   </div>
                 )}
-                
+
                 <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                    <button 
                     onClick={(e) => { e.stopPropagation(); onDelete(sub.id); }} 
