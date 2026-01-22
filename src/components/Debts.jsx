@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import Flatpickr from 'react-flatpickr';
 import MonthSelectPlugin from 'flatpickr/dist/plugins/monthSelect';
 import { 
@@ -109,7 +110,18 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate,
 
   const handlePay = (id) => {
     if (!payAmount) return;
-    onPay(id, payAmount, payDate.includes('T') ? payDate : `${payDate}T12:00:00Z`);
+    
+    // Obtener fechas en formato YYYY-MM-DD local para comparación segura
+    const today = new Date();
+    const todayStr = today.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    const selectedDateStr = payDate.slice(0, 10);
+
+    if (selectedDateStr > todayStr) {
+       const debt = debts.find(d => d.id === id);
+       if (debt) onSchedule(debt, payDate, payAmount);
+    } else {
+       onPay(id, payAmount, payDate.includes('T') ? payDate : `${payDate}T12:00:00Z`);
+    }
     setPayingId(null);
     setPayAmount('');
     setPayDate(new Date().toISOString());
@@ -344,6 +356,9 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate,
                           </button>
                           {menuOpenId === card.id && (
                             <div className="absolute right-0 top-11 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-neutral-700 py-2 z-50 min-w-[160px] animate-in fade-in zoom-in-95">
+                              <button onClick={() => setPayingId(card.id)} className="w-full text-left px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-3 font-semibold">
+                                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg"><DollarSign size={14} /></div> Abonar
+                              </button>
                               <button onClick={() => handleEdit(card)} className="w-full text-left px-4 py-3 text-sm text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-700 flex items-center gap-3">
                                 <div className="p-1.5 bg-slate-100 dark:bg-neutral-700 rounded-lg"><Pencil size={14} /></div> Editar
                               </button>
@@ -379,6 +394,8 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate,
                         <p className="text-[9px] md:text-[10px] text-white/50 uppercase font-bold tracking-widest">Límite ${limit.toLocaleString()}</p>
                       </div>
                     </div>
+
+                    
                   </div>
 
                   {/* Info Grid Responsive */}
@@ -511,25 +528,7 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate,
                   </div>
                 </div>
 
-                {/* MODAL PAGAR RESPONSIVE */}
-                {payingId === loan.id && (
-                  <div className="absolute inset-0 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-md z-20 p-6 flex flex-col items-center justify-center animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                    <div className="w-full max-w-xs space-y-4">
-                      <div className="text-center">
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Abonar a</p>
-                        <p className="text-lg font-bold text-slate-800 dark:text-white">{loan.name}</p>
-                      </div>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
-                        <input type="number" autoFocus placeholder="0.00" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-full p-4 pl-8 bg-slate-100 dark:bg-neutral-800 rounded-2xl border-none outline-none font-black text-xl text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => setPayingId(null)} className="flex-1 py-4 text-slate-400 font-bold uppercase text-xs hover:text-slate-600 transition-colors">Cancelar</button>
-                        <button onClick={() => handlePay(loan.id)} className="flex-[2] bg-emerald-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-200 dark:shadow-none active:scale-95 transition-transform">Confirmar Pago</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                
               </div>
             );
           })}
@@ -578,6 +577,76 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate,
           </div>
         </div>
       )}
+      {/* CENTRALIZED PAYMENT MODAL */}
+      {payingId && (() => {
+        const payingDebt = debts.find(d => d.id === payingId);
+        if (!payingDebt) return null;
+        
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const selectedDateStr = payDate ? payDate.slice(0, 10) : todayStr;
+        const isFuture = selectedDateStr > todayStr;
+
+        return createPortal(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/30 dark:bg-black/60 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setPayingId(null)}>
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-white/50 dark:border-neutral-800 p-8 relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+               <button onClick={() => setPayingId(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full transition-colors text-slate-400">
+                 <X size={20} />
+               </button>
+               
+               <div className="text-center mb-8">
+                 <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-500">
+                   <DollarSign size={32} />
+                 </div>
+                 <h3 className="text-xl font-bold text-slate-800 dark:text-white">Abonar a Deuda</h3>
+                 <p className="text-sm text-slate-500 dark:text-neutral-400 font-medium mt-1">{payingDebt.name}</p>
+               </div>
+
+               <div className="space-y-4 mb-8">
+                 <div className="relative">
+                   <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-lg">$</span>
+                   <input 
+                     type="number" 
+                     autoFocus 
+                     placeholder="0.00" 
+                     value={payAmount} 
+                     onChange={e => setPayAmount(e.target.value)} 
+                     className="w-full p-4 pl-8 bg-slate-50 dark:bg-neutral-800 rounded-2xl border-none outline-none font-black text-2xl text-center text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
+                   />
+                 </div>
+                 
+                 <div className="bg-slate-50 dark:bg-neutral-800 rounded-2xl p-1 flex items-center">
+                    <div className="p-3 text-slate-400">
+                      <Calendar size={20}/>
+                    </div>
+                    <Flatpickr 
+                      value={payDate} 
+                      options={{ dateFormat: 'Y-m-d', minDate: 'today' }} 
+                      onChange={(_, dateStr) => setPayDate(dateStr)} 
+                      className="w-full bg-transparent border-none outline-none font-bold text-slate-600 dark:text-neutral-300 text-sm p-2"
+                      placeholder="Fecha del pago"
+                    />
+                 </div>
+               </div>
+
+               <div className="flex gap-3">
+                 <button onClick={() => setPayingId(null)} className="flex-1 py-3.5 rounded-xl font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors text-sm">
+                   Cancelar
+                 </button>
+                 <button 
+                   onClick={() => handlePay(payingDebt.id)} 
+                   disabled={!payAmount}
+                   className={`flex-[2] py-3.5 rounded-xl font-bold text-white shadow-lg shadow-emerald-200 dark:shadow-none active:scale-95 transition-all flex items-center justify-center gap-2 ${
+                     !payAmount ? 'bg-slate-300 dark:bg-neutral-700 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600'
+                   }`}
+                 >
+                   {isFuture ? 'Programar' : 'Confirmar Pago'}
+                 </button>
+               </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 }
