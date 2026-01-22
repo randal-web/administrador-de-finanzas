@@ -1,82 +1,161 @@
 import { useState } from 'react';
 import Flatpickr from 'react-flatpickr';
 import MonthSelectPlugin from 'flatpickr/dist/plugins/monthSelect';
-import { CreditCard, Plus, Trash2, DollarSign, TrendingDown, Calendar, ArrowUpCircle, ChevronDown, ChevronUp, CalendarClock } from 'lucide-react';
+import { 
+  CreditCard as CreditCardIcon, Plus, Trash2, DollarSign, TrendingUp, TrendingDown,
+  Calendar, ArrowUpCircle, ChevronDown, ChevronUp, CalendarClock, 
+  AlertCircle, Wallet, Landmark, Info, Check, Scissors, PiggyBank, Clock, MoreHorizontal, Pencil, Percent, Banknote, X
+} from 'lucide-react';
 
-export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onDelete }) {
+const CARD_COLORS = [
+  { id: 'black', bg: 'from-slate-800 via-slate-900 to-black', name: 'Negro', value: '#1e293b' },
+  { id: 'blue', bg: 'from-blue-500 via-indigo-500 to-violet-600', name: 'Azul', value: '#3b82f6' },
+  { id: 'purple', bg: 'from-violet-500 via-purple-500 to-fuchsia-600', name: 'Púrpura', value: '#8b5cf6' },
+  { id: 'rose', bg: 'from-rose-500 via-red-500 to-orange-600', name: 'Rosa', value: '#ef4444' },
+  { id: 'gold', bg: 'from-amber-400 via-orange-400 to-yellow-600', name: 'Dorado', value: '#f59e0b' },
+  { id: 'teal', bg: 'from-teal-500 via-emerald-500 to-cyan-600', name: 'Verde', value: '#10b981' },
+];
+
+export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate, onDelete }) {
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [expandedStartId, setExpandedStartId] = useState(null);
+  const [menuOpenId, setMenuOpenId] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [newDebt, setNewDebt] = useState({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', paymentAmount: '', type: 'personal' });
   
-  // States for Paying Now
+  const [newDebt, setNewDebt] = useState({ 
+    name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', 
+    paymentAmount: '', type: 'personal', creditLimit: '', cutoffDay: '', paymentDay: '', color: 'black',
+    totalAmount: '', endDate: ''
+  });
+  
   const [payingId, setPayingId] = useState(null);
   const [payAmount, setPayAmount] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString());
 
-  // States for Scheduling Next Payment
-  const [schedulingId, setSchedulingId] = useState(null);
-  const [scheduleAmount, setScheduleAmount] = useState('');
-  const [scheduleDate, setScheduleDate] = useState('');
+  const getDaysUntil = (day) => {
+    if (!day) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    let nextDate = new Date(currentYear, currentMonth, day);
+    if (nextDate <= today) nextDate = new Date(currentYear, currentMonth + 1, day);
+    return Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const formatDateShort = (dateString) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+  };
+
+  const handleEdit = (debt) => {
+    setEditingId(debt.id);
+    setNewDebt({
+      name: debt.name,
+      amount: debt.amount,
+      date: debt.date ? debt.date.split('T')[0] : new Date().toISOString().slice(0, 10),
+      paymentDate: '',
+      paymentAmount: '',
+      type: debt.type,
+      creditLimit: debt.credit_limit || debt.creditLimit || '',
+      cutoffDay: debt.cutoff_day || debt.cutoffDay || '',
+      paymentDay: debt.payment_day || debt.paymentDay || '',
+      color: debt.color || 'black',
+      totalAmount: debt.total_amount || debt.totalAmount || '',
+      endDate: debt.end_date ? debt.end_date.split('T')[0] : (debt.endDate ? debt.endDate.split('T')[0] : '')
+    });
+    setIsAdding(true);
+    setMenuOpenId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newDebt.name || !newDebt.amount) return;
-    onAdd({ 
-      ...newDebt, 
+    
+    const payload = {
+      name: newDebt.name,
+      amount: parseFloat(newDebt.amount),
       date: newDebt.date ? `${newDebt.date}T12:00:00Z` : '',
-      paymentDate: newDebt.paymentDate ? `${newDebt.paymentDate}T12:00:00Z` : '',
-      paymentAmount: newDebt.paymentAmount || newDebt.amount
+      type: newDebt.type,
+      creditLimit: newDebt.creditLimit ? parseFloat(newDebt.creditLimit) : null,
+      cutoffDay: newDebt.cutoffDay ? parseInt(newDebt.cutoffDay) : null,
+      paymentDay: newDebt.paymentDay ? parseInt(newDebt.paymentDay) : null,
+      color: newDebt.color,
+      totalAmount: newDebt.totalAmount ? parseFloat(newDebt.totalAmount) : null,
+      endDate: newDebt.endDate ? `${newDebt.endDate}T12:00:00Z` : null
+    };
+
+    if (editingId) {
+      onUpdate(editingId, payload);
+    } else {
+      onAdd({ 
+        ...payload, 
+        paymentDate: newDebt.paymentDate ? `${newDebt.paymentDate}T12:00:00Z` : '',
+        paymentAmount: newDebt.paymentAmount || newDebt.amount
+      });
+    }
+    
+    setNewDebt({ 
+      name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', 
+      paymentAmount: '', type: 'personal', creditLimit: '', cutoffDay: '', paymentDay: '', color: 'black',
+      totalAmount: '', endDate: ''
     });
-    setNewDebt({ name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', paymentAmount: '', type: 'personal' });
     setIsAdding(false);
+    setEditingId(null);
   };
 
   const handlePay = (id) => {
     if (!payAmount) return;
-    const formattedDate = payDate.includes('T') ? payDate : `${payDate}T12:00:00Z`;
-    onPay(id, payAmount, formattedDate);
+    onPay(id, payAmount, payDate.includes('T') ? payDate : `${payDate}T12:00:00Z`);
     setPayingId(null);
     setPayAmount('');
     setPayDate(new Date().toISOString());
   };
 
-  const handleSchedule = (debt) => {
-    if (!scheduleAmount || !scheduleDate) return;
-    const formattedDate = scheduleDate.includes('T') ? scheduleDate : `${scheduleDate}T12:00:00Z`;
-    onSchedule(debt, formattedDate, scheduleAmount);
-    setSchedulingId(null);
-    setScheduleAmount('');
-    setScheduleDate('');
-  };
-
   const filteredDebts = debts.filter(debt => {
-    if (showAll) return true;
-    if (!debt.date) return true; // Show debts without date (legacy)
-    return debt.date.startsWith(selectedMonth);
+    if (showAll || debt.type === 'credit-card') return true;
+    return debt.date && debt.date.startsWith(selectedMonth);
   });
 
-  const totalDebt = filteredDebts.reduce((acc, curr) => acc + curr.amount, 0);
+  const creditCards = filteredDebts.filter(d => d.type === 'credit-card');
+  const loans = filteredDebts.filter(d => d.type !== 'credit-card');
+
+  const totalDebt = filteredDebts.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalLimit = creditCards.reduce((acc, curr) => acc + (curr.credit_limit || curr.creditLimit || 0), 0);
 
   return (
-    <div className="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-50 dark:border-neutral-800">
+    <div className="bg-white dark:bg-neutral-900 p-4 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-50 dark:border-neutral-800 animate-fade-in" onClick={() => setMenuOpenId(null)}>
+      {/* HEADER RESPONSIVE */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
-        <div>
+        <div className="w-full lg:w-auto">
           <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
             <div className="p-2 md:p-3 bg-rose-50 dark:bg-rose-900/20 rounded-2xl text-rose-500 dark:text-rose-400">
-              <CreditCard size={20} className="md:w-6 md:h-6" />
+              <CreditCardIcon size={20} className="md:w-6 md:h-6" />
             </div>
             Control de Deudas
           </h2>
-          <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium mt-2 ml-1">
-            Total acumulado ({showAll ? 'Histórico' : selectedMonth}): <span className="text-rose-500 font-bold">${totalDebt.toFixed(2)}</span>
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-3 ml-1">
+             <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium">
+              Acumulado ({showAll ? 'Histórico' : selectedMonth}): <span className="text-rose-500 font-bold block sm:inline text-lg sm:text-sm">${totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </p>
+            {totalLimit > 0 && (
+              <div className="hidden sm:block w-px h-4 bg-slate-200 dark:bg-neutral-800" />
+            )}
+            {totalLimit > 0 && (
+              <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium">
+               Crédito Total: <span className="text-slate-600 dark:text-neutral-300 font-bold block sm:inline">${totalLimit.toLocaleString()}</span>
+              </p>
+            )}
+          </div>
         </div>
+        
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
           <button
             onClick={() => setShowAll(!showAll)}
-            className={`w-full sm:w-auto px-4 py-3 rounded-2xl font-medium transition-all ${
+            className={`flex-1 sm:flex-none px-4 py-3 rounded-2xl font-semibold text-sm transition-all ${
               showAll 
                 ? 'bg-rose-500 text-white shadow-lg shadow-rose-200 dark:shadow-rose-900/20' 
                 : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
@@ -86,281 +165,419 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onDelete 
           </button>
 
           {!showAll && (
-            <div className="relative w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none z-50">
               <Flatpickr
-                value={selectedMonth}
+                value={new Date(selectedMonth + '-01')}
                 options={{
                   plugins: [new MonthSelectPlugin({ shorthand: true, dateFormat: "Y-m", theme: "airbnb" })],
-                  disableMobile: true
+                  disableMobile: true,
+                  static: true
                 }}
                 onChange={([date]) => {
                   const year = date.getFullYear();
                   const month = String(date.getMonth() + 1).padStart(2, '0');
                   setSelectedMonth(`${year}-${month}`);
                 }}
-                className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 font-medium cursor-pointer"
-                placeholder="Seleccionar Mes"
+                className="w-full sm:w-auto bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 px-4 py-3 rounded-2xl border-none outline-none focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 font-semibold text-sm cursor-pointer"
+                placeholder="Mes"
               />
             </div>
           )}
           <button
-            onClick={() => setIsAdding(!isAdding)}
-            className="w-full sm:w-auto text-sm bg-slate-900 dark:bg-neutral-800 text-white px-5 py-3 rounded-2xl hover:bg-slate-800 dark:hover:bg-neutral-700 font-medium transition-all shadow-lg shadow-slate-200 dark:shadow-none hover:shadow-xl hover:shadow-slate-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
+            onClick={() => {
+              setIsAdding(!isAdding);
+              setEditingId(null);
+              setNewDebt({ 
+                name: '', amount: '', date: new Date().toISOString().slice(0, 10), paymentDate: '', 
+                paymentAmount: '', type: 'personal', creditLimit: '', cutoffDay: '', paymentDay: '', color: 'black',
+                totalAmount: '', endDate: ''
+              });
+            }}
+            className="flex-1 sm:flex-none text-sm bg-slate-900 dark:bg-blue-600 text-white px-5 py-3 rounded-2xl hover:opacity-90 font-bold transition-all shadow-lg shadow-slate-200 dark:shadow-none transform active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
           >
-            {isAdding ? 'Cancelar' : <><Plus size={18} /> Nueva Deuda</>}
+            {isAdding ? 'Cerrar' : <><Plus size={18} /> Nueva Deuda</>}
           </button>
         </div>
       </div>
 
+      {/* FORMULARIO RESPONSIVE */}
       {isAdding && (
-        <form onSubmit={handleSubmit} className="mb-8 p-6 bg-slate-50 dark:bg-neutral-800/50 rounded-3xl border border-slate-100 dark:border-neutral-700 animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <input
-              type="text"
-              placeholder="Nombre (ej. Tarjeta Visa, Préstamo)"
-              value={newDebt.name}
-              onChange={e => setNewDebt({...newDebt, name: e.target.value})}
-              className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
-              required
-            />
-            <select
-              value={newDebt.type}
-              onChange={e => setNewDebt({...newDebt, type: e.target.value})}
-              className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white cursor-pointer"
-            >
-              <option value="personal">Personal</option>
-              <option value="credit-card">Tarjeta de Crédito</option>
-              <option value="loan">Préstamo</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Monto adeudado"
-              value={newDebt.amount}
-              onChange={e => setNewDebt({...newDebt, amount: e.target.value})}
-              className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
-              required
-            />
+        <form onSubmit={handleSubmit} className="mb-10 p-5 md:p-8 bg-slate-50 dark:bg-neutral-800/50 rounded-3xl border border-slate-100 dark:border-neutral-700 animate-fade-in" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-white">{editingId ? 'Editar Deuda' : 'Nueva Deuda'}</h3>
+            <button type="button" onClick={() => setIsAdding(false)} className="p-2 hover:bg-white dark:hover:bg-neutral-800 rounded-full transition-colors text-slate-400"><X size={20}/></button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-neutral-400 mb-2 uppercase tracking-wider ml-1">Fecha de la Deuda</label>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-1">Nombre / Banco</label>
+              <input type="text" placeholder="Ej: Visa Oro, BBVA" value={newDebt.name} onChange={e => setNewDebt({...newDebt, name: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none text-slate-800 dark:text-white font-medium shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all" required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-1">Tipo</label>
+              <select value={newDebt.type} onChange={e => setNewDebt({...newDebt, type: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none text-slate-800 dark:text-white font-medium cursor-pointer shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all">
+                <option value="personal">Personal / Amigo</option>
+                <option value="credit-card">Tarjeta de Crédito</option>
+                <option value="loan">Préstamo Bancario</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-1">{newDebt.type === 'loan' ? 'Monto Restante' : 'Saldo Actual'}</label>
+              <input type="number" placeholder="0.00" value={newDebt.amount} onChange={e => setNewDebt({...newDebt, amount: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none text-slate-800 dark:text-white font-medium shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all" required />
+            </div>
+          </div>
+
+          {(newDebt.type === 'credit-card' || newDebt.type === 'loan') && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6 animate-in slide-in-from-top-2">
+              {newDebt.type === 'credit-card' ? (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Límite</label>
+                    <input type="number" placeholder="Ej. 50000" value={newDebt.creditLimit} onChange={e => setNewDebt({...newDebt, creditLimit: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none font-medium shadow-sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Día Corte (1-31)</label>
+                    <input type="number" min="1" max="31" value={newDebt.cutoffDay} onChange={e => setNewDebt({...newDebt, cutoffDay: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none font-medium shadow-sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Día Pago (1-31)</label>
+                    <input type="number" min="1" max="31" value={newDebt.paymentDay} onChange={e => setNewDebt({...newDebt, paymentDay: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none font-medium shadow-sm" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Monto Total Original</label>
+                    <input type="number" placeholder="Ej. 100000" value={newDebt.totalAmount} onChange={e => setNewDebt({...newDebt, totalAmount: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none font-medium shadow-sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Día Pago (1-28)</label>
+                    <input type="number" min="1" max="28" value={newDebt.paymentDay} onChange={e => setNewDebt({...newDebt, paymentDay: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none font-medium shadow-sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Fecha de Término</label>
+                    <Flatpickr
+                      value={newDebt.endDate} options={{ dateFormat: 'Y-m-d' }}
+                      onChange={(_, dateStr) => setNewDebt({ ...newDebt, endDate: dateStr })}
+                      className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none text-slate-800 dark:text-white font-medium shadow-sm"
+                      placeholder="Opcional"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+            <div className="space-y-3">
+               <label className="text-xs font-bold text-slate-400 uppercase ml-1">Color / Estilo</label>
+               <div className="flex flex-wrap gap-3">
+                 {CARD_COLORS.map(c => (
+                   <button type="button" key={c.id} onClick={() => setNewDebt({...newDebt, color: c.id})} className={`w-10 h-10 rounded-full bg-gradient-to-br ${c.bg} ${newDebt.color === c.id ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-neutral-900 scale-110' : ''} transition-all active:scale-90`} />
+                 ))}
+               </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-1">Fecha {newDebt.type === 'credit-card' ? 'Apertura' : 'Inicio'}</label>
               <Flatpickr
-                value={newDebt.date}
-                options={{ dateFormat: 'Y-m-d' }}
+                value={newDebt.date} options={{ dateFormat: 'Y-m-d' }}
                 onChange={(_, dateStr) => setNewDebt({ ...newDebt, date: dateStr })}
-                className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
-                placeholder="Fecha de la deuda"
+                className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none text-slate-800 dark:text-white font-medium shadow-sm"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-neutral-400 mb-2 uppercase tracking-wider ml-1">Fecha de Pago (Opcional)</label>
-              <div className="flex flex-col sm:flex-row gap-2">
+          </div>
+          
+          {!editingId && (
+            <div className="mb-8">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-1 block mb-2">Programar Primer Pago (Opcional)</label>
+              <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-grow">
-                  <Flatpickr
-                    value={newDebt.paymentDate}
-                    options={{ dateFormat: 'Y-m-d' }}
-                    onChange={(_, dateStr) => setNewDebt({ ...newDebt, paymentDate: dateStr })}
-                    className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium text-slate-800 dark:text-white"
-                    placeholder="Fecha próximo pago"
-                  />
+                  <Flatpickr value={newDebt.paymentDate} options={{ dateFormat: 'Y-m-d' }} onChange={(_, dateStr) => setNewDebt({ ...newDebt, paymentDate: dateStr })} placeholder="Elegir fecha" className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none font-medium shadow-sm" />
                 </div>
                 {newDebt.paymentDate && (
-                  <div className="w-full sm:w-32 animate-fade-in">
-                    <input
-                      type="number"
-                      placeholder="Monto"
-                      value={newDebt.paymentAmount}
-                      onChange={e => setNewDebt({...newDebt, paymentAmount: e.target.value})}
-                      className="w-full p-4 border-none rounded-2xl bg-white dark:bg-neutral-900 shadow-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none transition-all font-medium placeholder:text-slate-400 dark:placeholder:text-neutral-500 text-slate-800 dark:text-white"
-                      title="Monto del primer pago"
-                    />
+                  <div className="w-full sm:w-40 animate-in fade-in slide-in-from-left-2">
+                    <input type="number" placeholder="Monto $" value={newDebt.paymentAmount} onChange={e => setNewDebt({...newDebt, paymentAmount: e.target.value})} className="w-full p-4 bg-white dark:bg-neutral-900 rounded-2xl border-none outline-none font-bold shadow-sm text-blue-600" />
                   </div>
                 )}
               </div>
             </div>
-          </div>
-          <button type="submit" className="w-full bg-rose-500 text-white py-4 rounded-2xl hover:bg-rose-600 font-medium transition-all shadow-lg shadow-rose-200 dark:shadow-rose-900/20 hover:shadow-xl hover:shadow-rose-300 transform hover:-translate-y-0.5">
-            Registrar Deuda
+          )}
+
+          <button type="submit" className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 rounded-2xl font-bold hover:opacity-90 transition-all shadow-xl active:scale-[0.98]">
+            {editingId ? 'Guardar Cambios' : 'Confirmar Registro'}
           </button>
         </form>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDebts.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-400 dark:text-neutral-600">
-            <div className="w-16 h-16 bg-slate-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-4">
-              <TrendingDown size={24} className="text-slate-300 dark:text-neutral-600" />
-            </div>
-            <p className="font-medium">¡Libre de deudas este mes!</p>
+      {/* CREDIT CARDS GRID */}
+      {creditCards.length > 0 && (
+        <div className="mb-12 space-y-5">
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Tarjetas Premium</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {creditCards.map((card, index) => {
+              const limit = card.credit_limit || card.creditLimit || 0;
+              const usagePercent = limit > 0 ? (card.amount / limit) * 100 : 0;
+              const style = CARD_COLORS.find(c => c.id === card.color) || CARD_COLORS[index % CARD_COLORS.length];
+              const daysCutoff = getDaysUntil(card.cutoff_day || card.cutoffDay);
+              const daysPayment = getDaysUntil(card.payment_day || card.paymentDay);
+
+              return (
+                <div key={card.id} className="group space-y-4 max-w-sm mx-auto w-full md:max-w-none">
+                  {/* Visual Card Responsive */}
+                  <div className={`relative aspect-[1.586/1] w-full rounded-3xl bg-gradient-to-br ${style.bg} p-5 md:p-7 shadow-xl transition-all duration-500 hover:shadow-2xl hover:-translate-y-1.5 overflow-hidden`}>
+                    <div className="absolute right-6 top-6 h-16 w-16 rounded-full bg-white/10" />
+                    <div className="absolute right-2 top-10 h-12 w-12 rounded-full bg-white/10" />
+                    <svg className="absolute inset-0 h-full w-full opacity-20" viewBox="0 0 400 250" preserveAspectRatio="none">
+                      <path d="M0,100 C100,150 200,50 400,100 L400,250 L0,250 Z" fill="white" fillOpacity="0.1" />
+                      <path d="M0,150 C150,100 250,200 400,150 L400,250 L0,250 Z" fill="white" fillOpacity="0.05" />
+                    </svg>
+
+                    <div className="relative z-10 h-full flex flex-col justify-between text-white">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">Credit Card</p>
+                          <h3 className="text-base md:text-lg font-bold tracking-wide truncate max-w-[150px] md:max-w-none">{card.name}</h3>
+                        </div>
+                        <div className="relative">
+                          <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === card.id ? null : card.id); }} className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+                            <MoreHorizontal size={16} />
+                          </button>
+                          {menuOpenId === card.id && (
+                            <div className="absolute right-0 top-11 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-neutral-700 py-2 z-50 min-w-[160px] animate-in fade-in zoom-in-95">
+                              <button onClick={() => handleEdit(card)} className="w-full text-left px-4 py-3 text-sm text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-700 flex items-center gap-3">
+                                <div className="p-1.5 bg-slate-100 dark:bg-neutral-700 rounded-lg"><Pencil size={14} /></div> Editar
+                              </button>
+                              <div className="h-px bg-slate-100 dark:bg-neutral-700 mx-2 my-1" />
+                              <button onClick={() => onDelete(card.id)} className="w-full text-left px-4 py-3 text-sm text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3">
+                                <div className="p-1.5 bg-rose-50 dark:bg-rose-900/20 rounded-lg"><Trash2 size={14} /></div> Eliminar
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-11 md:h-9 md:w-12 rounded-md bg-gradient-to-br from-yellow-200 via-yellow-300 to-amber-400 shadow-inner">
+                          <div className="grid h-full w-full grid-cols-2 gap-px p-1.5 opacity-40">
+                            <div className="border-r border-b border-black/20" />
+                            <div className="border-b border-black/20" />
+                            <div className="border-r border-black/20" />
+                            <div />
+                          </div>
+                        </div>
+                        <div className="h-5 w-5 md:h-6 md:w-6 rounded-full border-2 border-white/30" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-xl md:text-2xl font-black tabular-nums">${card.amount.toLocaleString()}</span>
+                          <span className="text-[10px] md:text-sm font-bold text-white/70">{usagePercent.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
+                          <div className="h-full bg-white transition-all duration-700 shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ width: `${Math.min(usagePercent, 100)}%` }} />
+                        </div>
+                        <p className="text-[9px] md:text-[10px] text-white/50 uppercase font-bold tracking-widest">Límite ${limit.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info Grid Responsive */}
+                  <div className="grid grid-cols-3 gap-2 px-1">
+                    <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/50 p-2.5 md:p-3 shadow-sm border border-slate-100/50 dark:border-neutral-800">
+                      <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-wide text-slate-400">Disponible</p>
+                      <p className={`mt-1 text-xs md:text-sm font-black truncate ${usagePercent > 80 ? 'text-rose-500' : 'text-emerald-500'}`}>${(limit - card.amount).toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/50 p-2.5 md:p-3 shadow-sm border border-slate-100/50 dark:border-neutral-800">
+                      <div className="flex items-center gap-1 text-slate-400"><Scissors size={10} className="hidden sm:block"/><p className="text-[8px] md:text-[10px] font-bold uppercase tracking-wide">Corte</p></div>
+                      <p className="mt-1 text-xs md:text-sm font-black text-slate-700 dark:text-white truncate">Día {card.cutoff_day || card.cutoffDay} <span className="text-[9px] font-normal text-slate-400 ml-0.5">({daysCutoff}d)</span></p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/50 p-2.5 md:p-3 shadow-sm border border-slate-100/50 dark:border-neutral-800">
+                      <div className="flex items-center gap-1 text-slate-400"><Calendar size={10} className="hidden sm:block"/><p className="text-[8px] md:text-[10px] font-bold uppercase tracking-wide">Pago</p></div>
+                      <p className="mt-1 text-xs md:text-sm font-black text-slate-700 dark:text-white truncate">Día {card.payment_day || card.paymentDay} <span className={`text-[9px] font-normal ml-0.5 ${daysPayment && daysPayment <= 5 ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>({daysPayment}d)</span></p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          filteredDebts.map(debt => (
-            <div key={debt.id} className="border border-slate-50 dark:border-neutral-800 rounded-3xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 bg-white dark:bg-neutral-900 group relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                 <button onClick={() => onDelete(debt.id)} className="text-slate-300 dark:text-neutral-600 hover:text-rose-400 dark:hover:text-rose-400 transition-colors bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20">
-                  <Trash2 size={18} />
-                </button>
-              </div>
+        </div>
+      )}
 
-              <div className="mb-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-bold text-slate-800 dark:text-white text-lg">{debt.name}</h3>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    debt.type === 'credit-card' 
-                      ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' 
-                      : debt.type === 'loan'
-                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                      : 'bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-400'
-                  }`}>
-                    {debt.type === 'credit-card' ? 'Tarjeta' : debt.type === 'loan' ? 'Préstamo' : 'Personal'}
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-rose-500 mt-2">${debt.amount.toFixed(2)}</p>
-                {debt.date && <p className="text-xs text-slate-400 mt-1">{new Date(debt.date).toLocaleDateString()}</p>}
-              </div>
-
-              {payingId === debt.id ? (
-                <div className="flex flex-col gap-2 bg-slate-50 dark:bg-neutral-800 p-3 rounded-2xl animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <DollarSign size={16} className="text-slate-400" />
-                    <input
-                      type="number"
-                      value={payAmount}
-                      onChange={e => setPayAmount(e.target.value)}
-                      className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
-                      placeholder="Monto a pagar"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <Calendar size={16} className="text-slate-400" />
-                     <Flatpickr
-                        value={payDate}
-                        options={{ dateFormat: 'Y-m-d' }}
-                        onChange={(_, dateStr) => setPayDate(dateStr)}
-                        className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
-                        placeholder="Fecha de pago"
-                      />
-                  </div>
-                  <div className="flex gap-2 mt-1">
-                     <button 
-                       onClick={() => {
-                         setPayingId(null);
-                         setPayAmount('');
-                       }}
-                       className="flex-1 py-2 rounded-xl bg-slate-200 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-neutral-600 transition-colors"
-                     >
-                       Cancelar
-                     </button>
-                     <button 
-                       onClick={() => handlePay(debt.id)} 
-                       className="flex-1 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20"
-                     >
-                       Confirmar
-                     </button>
-                  </div>
-                </div>
-              ) : schedulingId === debt.id ? (
-                <div className="flex flex-col gap-2 bg-rose-50 dark:bg-rose-900/10 p-3 rounded-2xl animate-fade-in border border-rose-100 dark:border-rose-900/20">
-                  <p className="text-xs font-bold text-rose-500 mb-1 ml-1">Programar Próximo Pago</p>
-                  <div className="flex items-center gap-2">
-                    <DollarSign size={16} className="text-rose-400" />
-                    <input
-                      type="number"
-                      value={scheduleAmount}
-                      onChange={e => setScheduleAmount(e.target.value)}
-                      className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
-                      placeholder="Monto próximo"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <CalendarClock size={16} className="text-rose-400" />
-                     <Flatpickr
-                        value={scheduleDate}
-                        options={{ dateFormat: 'Y-m-d', minDate: 'today' }}
-                        onChange={(_, dateStr) => setScheduleDate(dateStr)}
-                        className="w-full p-2 bg-white dark:bg-neutral-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-900 outline-none font-medium text-slate-800 dark:text-white"
-                        placeholder="Fecha próxima"
-                      />
-                  </div>
-                  <div className="flex gap-2 mt-1">
-                     <button 
-                       onClick={() => {
-                         setSchedulingId(null);
-                         setScheduleAmount('');
-                         setScheduleDate('');
-                       }}
-                       className="flex-1 py-2 rounded-xl bg-slate-200 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-neutral-600 transition-colors"
-                     >
-                       Cancelar
-                     </button>
-                     <button 
-                       onClick={() => handleSchedule(debt)} 
-                       className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-xs font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-200 dark:shadow-rose-900/20"
-                     >
-                       Programar
-                     </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => {
-                      setPayingId(debt.id);
-                      setPayAmount('');
-                      setPayDate(new Date().toISOString().split('T')[0]);
-                      setSchedulingId(null);
-                    }}
-                    className="flex-1 py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 font-medium text-sm transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <DollarSign size={16} /> Abonar
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setSchedulingId(debt.id);
-                      setScheduleAmount('');
-                      setScheduleDate('');
-                      setPayingId(null);
-                    }}
-                    className="flex-1 py-3 rounded-2xl bg-slate-50 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400 font-medium text-sm transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <CalendarClock size={16} /> Programar
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-4 border-t border-slate-100 dark:border-neutral-800 pt-4">
-                 <button 
-                  onClick={() => setExpandedStartId(expandedStartId === debt.id ? null : debt.id)}
-                  className="w-full flex items-center justify-between text-xs font-medium text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300"
-                 >
-                  <span>Historial de Pagos</span>
-                  {expandedStartId === debt.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                 </button>
-
-                 {expandedStartId === debt.id && (
-                   <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">
-                     {transactions && transactions.filter(t => t.debt_id === debt.id).length > 0 ? (
-                       transactions.filter(t => t.debt_id === debt.id).map(payment => (
-                         <div key={payment.id} className="flex justify-between items-center text-xs p-2 bg-slate-50 dark:bg-neutral-800/50 rounded-lg">
-                           <span className="text-slate-500 dark:text-neutral-400">{new Date(payment.date).toLocaleDateString()}</span>
-                           <span className="font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 px-1.5 py-0.5 rounded ml-auto flex items-center gap-1">
-                             <ArrowUpCircle size={10} />
-                             ${payment.amount.toFixed(2)}
-                           </span>
-                         </div>
-                       ))
-                     ) : (
-                       <p className="text-xs text-center text-slate-400 dark:text-neutral-600 italic py-2">No hay pagos registrados</p>
-                     )}
-                   </div>
-                 )}
-              </div>
+      {/* LOANS GRID RESPONSIVE */}
+      <div className="space-y-5">
+        {creditCards.length > 0 && <h3 className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] ml-1 pt-4">Préstamos y Otros Pasivos</h3>}
+        {loans.length === 0 && creditCards.length === 0 && (
+           <div className="col-span-full flex flex-col items-center justify-center py-16 text-slate-400 dark:text-neutral-600">
+            <div className="w-20 h-20 bg-slate-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-5">
+              <TrendingUp size={32} className="text-slate-300 dark:text-neutral-600" />
             </div>
-          ))
+            <p className="font-bold text-lg">¡Libre de deudas este mes!</p>
+            <p className="text-sm opacity-60">Usa el botón "Nueva Deuda" para registrar una.</p>
+          </div>
         )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {loans.map((loan, index) => {
+            const style = CARD_COLORS.find(c => c.id === loan.color) || CARD_COLORS[index % CARD_COLORS.length];
+            const total = loan.total_amount || loan.totalAmount || loan.amount;
+            const remaining = loan.amount;
+            const paid = total - remaining;
+            const progress = total > 0 ? (paid / total) * 100 : 0;
+            const daysUntil = loan.payment_day || loan.paymentDay ? getDaysUntil(loan.payment_day || loan.paymentDay) : null;
+            const endDate = loan.end_date || loan.endDate;
+
+            return (
+              <div key={loan.id} className="group relative overflow-hidden rounded-[2rem] bg-white dark:bg-neutral-900 shadow-sm ring-1 ring-slate-100 dark:ring-neutral-800 transition-all hover:shadow-xl">
+                <div className={`relative h-2.5 bg-gradient-to-r ${style.bg}`} />
+                <div className="p-5 md:p-7">
+                  <div className="mb-6 flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 dark:bg-neutral-800 ring-1 ring-slate-100 dark:ring-neutral-700`}>
+                        <Landmark size={24} style={{ color: style.value }} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">{loan.name}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{loan.type === 'loan' ? 'Préstamo' : 'Personal'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="relative">
+                      <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === loan.id ? null : loan.id); }} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-neutral-800 rounded-xl transition-colors">
+                        <MoreHorizontal size={20} />
+                      </button>
+                      {menuOpenId === loan.id && (
+                        <div className="absolute right-0 top-11 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-neutral-700 py-2 z-50 min-w-[160px] animate-in fade-in zoom-in-95">
+                          <button onClick={() => setPayingId(loan.id)} className="w-full text-left px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-3 font-semibold">
+                            <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg"><DollarSign size={14} /></div> Abonar
+                          </button>
+                          <button onClick={() => handleEdit(loan)} className="w-full text-left px-4 py-3 text-sm text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-700 flex items-center gap-3">
+                            <div className="p-1.5 bg-slate-100 dark:bg-neutral-700 rounded-lg"><Pencil size={14} /></div> Editar
+                          </button>
+                          <div className="h-px bg-slate-100 dark:bg-neutral-700 mx-2 my-1" />
+                          <button onClick={() => onDelete(loan.id)} className="w-full text-left px-4 py-3 text-sm text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3">
+                            <div className="p-1.5 bg-rose-50 dark:bg-rose-900/20 rounded-lg"><Trash2 size={14} /></div> Eliminar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <div className="mb-2 flex items-baseline justify-between">
+                      <span className="text-3xl font-black text-slate-800 dark:text-white tabular-nums">${remaining.toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Por pagar</span>
+                    </div>
+                    
+                    <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-neutral-800">
+                      <div
+                        className="absolute left-0 top-0 h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: style.value }}
+                      />
+                    </div>
+                    
+                    <div className="mt-2.5 flex items-center justify-between text-[10px] font-black uppercase tracking-tight text-slate-400">
+                      <span>${paid.toLocaleString()} PAGADO</span>
+                      <span className="bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 rounded text-slate-500 dark:text-slate-300">{progress.toFixed(0)}%</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/50 p-3.5 border border-slate-100/50 dark:border-neutral-800">
+                      <div className="flex items-center gap-2 text-slate-400 mb-1.5">
+                        <Calendar size={12} />
+                        <span className="text-[9px] font-black uppercase tracking-tighter">Fecha Inicio</span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 dark:text-white">{new Date(loan.date).toLocaleDateString()}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/50 p-3.5 border border-slate-100/50 dark:border-neutral-800">
+                      <div className="flex items-center gap-2 text-slate-400 mb-1.5">
+                        <TrendingDown size={12} />
+                        <span className="text-[9px] font-black uppercase tracking-tighter">Historial</span>
+                      </div>
+                      <button onClick={() => setExpandedStartId(expandedStartId === loan.id ? null : loan.id)} className="text-[9px] font-black text-blue-500 uppercase hover:text-blue-600 transition-colors">Detalles →</button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-50 dark:border-neutral-800 pt-5 gap-3">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400 font-bold uppercase tracking-tighter">
+                      <CalendarClock size={14} className="text-slate-300" />
+                      <span>{formatDateShort(loan.date)} — {endDate ? formatDateShort(endDate) : 'Indefinido'}</span>
+                    </div>
+                    
+                    {daysUntil !== null && (
+                      <div className={`self-start sm:self-auto rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-tight shadow-sm ${daysUntil <= 5 ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100' : 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100'}`}>
+                        Próximo pago en {daysUntil}d
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* MODAL PAGAR RESPONSIVE */}
+                {payingId === loan.id && (
+                  <div className="absolute inset-0 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-md z-20 p-6 flex flex-col items-center justify-center animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                    <div className="w-full max-w-xs space-y-4">
+                      <div className="text-center">
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Abonar a</p>
+                        <p className="text-lg font-bold text-slate-800 dark:text-white">{loan.name}</p>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
+                        <input type="number" autoFocus placeholder="0.00" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-full p-4 pl-8 bg-slate-100 dark:bg-neutral-800 rounded-2xl border-none outline-none font-black text-xl text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setPayingId(null)} className="flex-1 py-4 text-slate-400 font-bold uppercase text-xs hover:text-slate-600 transition-colors">Cancelar</button>
+                        <button onClick={() => handlePay(loan.id)} className="flex-[2] bg-emerald-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-200 dark:shadow-none active:scale-95 transition-transform">Confirmar Pago</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* HISTORIAL EXPANDIDO RESPONSIVE */}
+      {expandedStartId && (
+        <div className="mt-10 bg-white dark:bg-neutral-900 rounded-[2.5rem] p-6 md:p-8 border border-slate-100 dark:border-neutral-800 shadow-2xl animate-in slide-in-from-bottom-6" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-8 px-1">
+            <div>
+              <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Info size={16} className="text-blue-500"/> Historial de Movimientos
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-1 font-bold">Registro detallado de transacciones</p>
+            </div>
+            <button onClick={() => setExpandedStartId(null)} className="p-2.5 bg-slate-50 dark:bg-neutral-800 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><X size={18}/></button>
+          </div>
+          
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+             {transactions && transactions.filter(t => t.debt_id === expandedStartId || t.debtId === expandedStartId).length > 0 ? (
+               transactions.filter(t => t.debt_id === expandedStartId || t.debtId === expandedStartId).map(payment => (
+                 <div key={payment.id} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-neutral-800/50 rounded-2xl border border-transparent hover:border-slate-200 dark:hover:border-neutral-700 transition-all">
+                   <div className="flex items-center gap-4">
+                     <div className={`p-2.5 rounded-xl ${payment.type === 'expense' ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500 shadow-sm'}`}>
+                        {payment.type === 'expense' ? <TrendingDown size={16}/> : <ArrowUpCircle size={16}/>}
+                     </div>
+                     <div className="min-w-0">
+                       <p className="font-bold text-slate-700 dark:text-white text-sm truncate">{payment.description || 'Movimiento de deuda'}</p>
+                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">{new Date(payment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                     </div>
+                   </div>
+                   <span className={`font-black text-sm whitespace-nowrap ml-4 ${payment.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                     {payment.type === 'expense' ? '+' : '-'}${payment.amount.toLocaleString()}
+                   </span>
+                 </div>
+               ))
+             ) : (
+               <div className="text-center py-12">
+                 <div className="w-12 h-12 bg-slate-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-3 opacity-50">
+                   <Info size={20} className="text-slate-300" />
+                 </div>
+                 <p className="text-slate-400 italic text-sm font-medium">No hay movimientos registrados para esta deuda.</p>
+               </div>
+             )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

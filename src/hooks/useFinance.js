@@ -475,7 +475,13 @@ export function useFinance() {
       id: crypto.randomUUID(),
       amount: parseFloat(debt.amount),
       date: debt.date || new Date().toISOString().split('T')[0],
-      type: debt.type || 'personal'
+      type: debt.type || 'personal',
+      creditLimit: debt.creditLimit ? parseFloat(debt.creditLimit) : null,
+      cutoffDay: debt.cutoffDay ? parseInt(debt.cutoffDay) : null,
+      paymentDay: debt.paymentDay ? parseInt(debt.paymentDay) : null,
+      color: debt.color || 'black',
+      totalAmount: debt.totalAmount ? parseFloat(debt.totalAmount) : null,
+      endDate: debt.endDate || null
     };
 
     const previousData = { ...data };
@@ -491,7 +497,13 @@ export function useFinance() {
         amount: newDebt.amount,
         date: newDebt.date,
         type: newDebt.type,
-        user_id: user.id
+        user_id: user.id,
+        credit_limit: newDebt.creditLimit,
+        cutoff_day: newDebt.cutoffDay,
+        payment_day: newDebt.paymentDay,
+        color: newDebt.color,
+        total_amount: newDebt.totalAmount,
+        end_date: newDebt.endDate
       }]);
 
       if (error) {
@@ -501,6 +513,62 @@ export function useFinance() {
       }
     }
     return { data: newDebt, error: null };
+  };
+
+  const updateDebt = async (id, updates) => {
+    const previousData = { ...data };
+    
+    // Normalize updates for local state (camelCase)
+    const localUpdates = { ...updates };
+    if (updates.credit_limit !== undefined) localUpdates.creditLimit = updates.credit_limit;
+    if (updates.cutoff_day !== undefined) localUpdates.cutoffDay = updates.cutoff_day;
+    if (updates.payment_day !== undefined) localUpdates.paymentDay = updates.payment_day;
+    if (updates.total_amount !== undefined) localUpdates.totalAmount = updates.total_amount;
+    if (updates.end_date !== undefined) localUpdates.endDate = updates.end_date;
+
+    setData(prev => ({
+      ...prev,
+      debts: prev.debts.map(d => d.id === id ? { ...d, ...localUpdates } : d)
+    }));
+
+    if (user && supabase) {
+      // Normalize updates for DB (snake_case)
+      const dbUpdates = { ...updates };
+      if (updates.creditLimit !== undefined) {
+        dbUpdates.credit_limit = updates.creditLimit;
+        delete dbUpdates.creditLimit;
+      }
+      if (updates.cutoffDay !== undefined) {
+        dbUpdates.cutoff_day = updates.cutoffDay;
+        delete dbUpdates.cutoffDay;
+      }
+      if (updates.paymentDay !== undefined) {
+        dbUpdates.payment_day = updates.paymentDay;
+        delete dbUpdates.paymentDay;
+      }
+      if (updates.totalAmount !== undefined) {
+        dbUpdates.total_amount = updates.totalAmount;
+        delete dbUpdates.totalAmount;
+      }
+      if (updates.endDate !== undefined) {
+        dbUpdates.end_date = updates.endDate;
+        delete dbUpdates.endDate;
+      }
+      
+      // Amount is usually handled by payDebt/increaseDebt, but allow it here too if needed
+      
+      const { error } = await supabase
+        .from('debts')
+        .update(dbUpdates)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating debt:', error);
+        setData(previousData);
+        return { error };
+      }
+    }
+    return { error: null };
   };
 
   const increaseDebt = async (id, amount) => {
@@ -698,6 +766,7 @@ export function useFinance() {
     payDebt,
     increaseDebt,
     deleteDebt,
+    updateDebt, // Added to return object
     addExpectedIncome,
     deleteExpectedIncome,
     stats: {

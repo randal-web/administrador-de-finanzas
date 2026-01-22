@@ -78,6 +78,7 @@ function App() {
     deleteDebt,
     addExpectedIncome,
     deleteExpectedIncome,
+    updateDebt, // New function
     stats 
   } = useFinance();
 
@@ -212,6 +213,12 @@ function App() {
     else showToast('Próximo pago programado correctamente');
   };
 
+  const handleUpdateDebt = async (id, updates) => {
+    const { error } = await updateDebt(id, updates);
+    if (error) showToast('Error al actualizar deuda', 'error');
+    else showToast('Deuda actualizada correctamente');
+  };
+
   const handleDeleteDebt = async (id) => {
     const { error } = await deleteDebt(id);
     if (error) showToast('Error al eliminar deuda', 'error');
@@ -306,6 +313,7 @@ function App() {
           onAdd={handleAddDebt} 
           onPay={handlePayDebt}
           onSchedule={handleScheduleDebtPayment}
+          onUpdate={handleUpdateDebt}
           onDelete={handleDeleteDebt} 
         />
       );
