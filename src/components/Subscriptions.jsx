@@ -128,7 +128,25 @@ export function Subscriptions({ subscriptions = [], onAdd, onDelete, onPay }) {
     .filter(sub => isPaidCurrentCycle(sub))
     .sort((a, b) => getDaysRemaining(a) - getDaysRemaining(b));
 
-  const totalPendingAmount = pendingSubs.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+  const totalPendingAmount = pendingSubs.reduce((acc, curr) => {
+    // Para mensual, siempre sumamos si está pendiente
+    if (curr.frequency === 'monthly' || !curr.frequency) {
+      return acc + (Number(curr.amount) || 0);
+    }
+    
+    // Para anual o único, solo sumamos si vence este mes o ya venció
+    const today = new Date();
+    const dueDate = new Date(curr.date);
+    const isPastOrCurrentMonth = 
+      (dueDate.getFullYear() < today.getFullYear()) ||
+      (dueDate.getFullYear() === today.getFullYear() && dueDate.getMonth() <= today.getMonth());
+    
+    if (isPastOrCurrentMonth) {
+      return acc + (Number(curr.amount) || 0);
+    }
+    
+    return acc;
+  }, 0);
 
   // Componente auxiliar para renderizar una tarjeta (evita duplicar código JSX)
   const SubscriptionCard = ({ sub }) => {
@@ -219,7 +237,7 @@ export function Subscriptions({ subscriptions = [], onAdd, onDelete, onPay }) {
           <div className="flex flex-col gap-1 mt-2 ml-1">
             <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium">Controla tus gastos recurrentes y vencimientos</p>
             <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium">
-              Total Pendiente: <span className="text-rose-500 font-bold">${totalPendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              Total Pendiente (Mes Actual): <span className="text-rose-500 font-bold">${totalPendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </p>
           </div>
         </div>
