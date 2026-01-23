@@ -128,6 +128,8 @@ export function Subscriptions({ subscriptions = [], onAdd, onDelete, onPay }) {
     .filter(sub => isPaidCurrentCycle(sub))
     .sort((a, b) => getDaysRemaining(a) - getDaysRemaining(b));
 
+  const totalPendingAmount = pendingSubs.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
   // Componente auxiliar para renderizar una tarjeta (evita duplicar código JSX)
   const SubscriptionCard = ({ sub }) => {
     const daysRemaining = getDaysRemaining(sub);
@@ -214,7 +216,12 @@ export function Subscriptions({ subscriptions = [], onAdd, onDelete, onPay }) {
             </div>
             Suscripciones y Pagos
           </h2>
-          <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium mt-2 ml-1">Controla tus gastos recurrentes y vencimientos</p>
+          <div className="flex flex-col gap-1 mt-2 ml-1">
+            <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium">Controla tus gastos recurrentes y vencimientos</p>
+            <p className="text-sm text-slate-400 dark:text-neutral-500 font-medium">
+              Total Pendiente: <span className="text-rose-500 font-bold">${totalPendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </p>
+          </div>
         </div>
         <button
           onClick={() => setIsAdding(!isAdding)}
