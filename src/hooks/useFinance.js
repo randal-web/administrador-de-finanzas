@@ -717,7 +717,7 @@ export function useFinance() {
         if (curr.debt_id || curr.debtId) {
           const debtId = curr.debt_id || curr.debtId;
           const linkedDebt = data.debts.find(d => d.id === debtId);
-          if (linkedDebt && linkedDebt.type === 'credit-card') {
+          if (linkedDebt && linkedDebt.type === 'credit-card' && curr.category !== 'Deudas') {
             return acc;
           }
         }

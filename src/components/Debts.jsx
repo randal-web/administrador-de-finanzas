@@ -33,7 +33,7 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate,
   
   const [payingId, setPayingId] = useState(null);
   const [payAmount, setPayAmount] = useState('');
-  const [payDate, setPayDate] = useState(new Date().toISOString());
+  const [payDate, setPayDate] = useState(new Date().toLocaleDateString('en-CA'));
 
   const getDaysUntil = (day) => {
     if (!day) return null;
@@ -124,7 +124,7 @@ export function Debts({ debts, transactions, onAdd, onPay, onSchedule, onUpdate,
     }
     setPayingId(null);
     setPayAmount('');
-    setPayDate(new Date().toISOString());
+    setPayDate(new Date().toLocaleDateString('en-CA'));
   };
 
   const filteredDebts = debts.filter(debt => {
